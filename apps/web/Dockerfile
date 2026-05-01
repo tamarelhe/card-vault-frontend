@@ -30,7 +30,7 @@ ARG NEXT_PUBLIC_CARDVAULT_API_URL=https://api-card-vault.tamarelhe.xyz/api/v1
 ENV NEXT_PUBLIC_CARDVAULT_API_URL=${NEXT_PUBLIC_CARDVAULT_API_URL}
 
 WORKDIR /app/apps/web
-RUN pnpm build
+RUN mkdir -p public && pnpm build
 
 # ── Runner ────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
