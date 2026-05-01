@@ -1,5 +1,5 @@
 {
-  "extends": "@cardvault/config/tsconfig/react-native.json",
+  "extends": "../../packages/config/tsconfig/react-native.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]

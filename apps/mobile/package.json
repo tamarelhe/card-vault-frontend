@@ -14,8 +14,8 @@
     "@cardvault/api": "workspace:*",
     "@cardvault/core": "workspace:*",
     "@cardvault/validation": "workspace:*",
-    "@tanstack/react-query": "^5.60.5",
     "@hookform/resolvers": "^3.9.1",
+    "@tanstack/react-query": "^5.60.5",
     "expo": "~52.0.0",
     "expo-router": "~4.0.0",
     "expo-secure-store": "~14.0.0",
@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@cardvault/config": "workspace:*",
+    "@types/node": "^22.9.0",
     "@types/react": "~18.3.12",
     "typescript": "^5.6.3"
   }

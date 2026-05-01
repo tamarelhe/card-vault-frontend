@@ -1,27 +1,18 @@
-import type { CardCondition, CardLanguage } from './card';
-
 export interface Collection {
   id: string;
   name: string;
-  description?: string;
-  isPublic: boolean;
-  ownerId: string;
-  totalCards: number;
-  uniqueCards: number;
-  totalValue?: number;
-  createdAt: string;
-  updatedAt: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CollectionItem {
-  id: string;
-  collectionId: string;
-  cardId: string;
-  quantity: number;
-  condition: CardCondition;
-  language: CardLanguage;
-  isFoil: boolean;
-  purchasePrice?: number;
-  notes?: string;
-  addedAt: string;
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  meta: PaginationMeta;
 }

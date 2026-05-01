@@ -1,5 +1,5 @@
 {
-  "extends": "@cardvault/config/tsconfig/base.json",
+  "extends": "../config/tsconfig/base.json",
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["ES2020"],

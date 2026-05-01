@@ -2,13 +2,18 @@ export { createApiClient, ApiError, UnauthorizedError, NotFoundError } from './c
 export type { ApiClient } from './client';
 
 export { createAuthApi } from './auth';
-export type { LoginRequest, RegisterRequest } from './auth';
+export type { LoginRequest, RegisterRequest, RefreshRequest, LogoutRequest } from './auth';
 
 export { createCardsApi } from './cards';
 export type { CardSearchParams, PaginatedCards } from './cards';
 
 export { createCollectionsApi } from './collections';
-export type { CreateCollectionBody, AddCollectionItemBody, UpdateCollectionItemBody } from './collections';
+export type {
+  CreateCollectionBody,
+  UpdateCollectionBody,
+  UpdateCollectionCardBody,
+  ListCollectionCardsParams,
+} from './collections';
 
 export { createScanApi } from './scan';
 

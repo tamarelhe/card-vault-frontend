@@ -1,28 +1,44 @@
 import type { ApiClient } from './client';
-import type { Collection, CollectionItem } from '@cardvault/core';
+import type { Collection, CollectionCard, PaginatedResponse } from '@cardvault/core';
 
 export interface CreateCollectionBody {
   name: string;
   description?: string;
-  isPublic?: boolean;
 }
 
-export interface AddCollectionItemBody {
-  cardId: string;
-  quantity: number;
-  condition: string;
-  language: string;
-  isFoil: boolean;
-  purchasePrice?: number;
+export interface UpdateCollectionBody {
+  name?: string;
+  description?: string;
+}
+
+export interface UpdateCollectionCardBody {
+  quantity?: number;
+  condition?: string;
+  language?: string;
+  foil?: boolean;
   notes?: string;
 }
 
-export type UpdateCollectionItemBody = Partial<Omit<AddCollectionItemBody, 'cardId'>>;
+export interface ListCollectionCardsParams {
+  page?: number;
+  page_size?: number;
+  q?: string;
+  set_code?: string;
+  sort_by?: 'name' | 'collector_number' | 'rarity' | 'condition' | 'quantity' | 'added_at' | 'price';
+  sort_order?: 'asc' | 'desc';
+}
 
 export function createCollectionsApi(client: ApiClient) {
   return {
-    list(): Promise<Collection[]> {
-      return client.get<Collection[]>('/collections');
+    list(params?: { page?: number; page_size?: number }): Promise<PaginatedResponse<Collection>> {
+      const qs = params
+        ? new URLSearchParams(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, String(v)])
+          ).toString()
+        : '';
+      return client.get<PaginatedResponse<Collection>>(`/collections${qs ? `?${qs}` : ''}`);
     },
     getById(id: string): Promise<Collection> {
       return client.get<Collection>(`/collections/${id}`);
@@ -30,23 +46,27 @@ export function createCollectionsApi(client: ApiClient) {
     create(body: CreateCollectionBody): Promise<Collection> {
       return client.post<Collection>('/collections', body);
     },
-    update(id: string, body: Partial<CreateCollectionBody>): Promise<Collection> {
+    update(id: string, body: UpdateCollectionBody): Promise<Collection> {
       return client.patch<Collection>(`/collections/${id}`, body);
     },
     delete(id: string): Promise<void> {
       return client.delete<void>(`/collections/${id}`);
     },
-    listItems(collectionId: string): Promise<CollectionItem[]> {
-      return client.get<CollectionItem[]>(`/collections/${collectionId}/items`);
+    listCards(collectionId: string, params?: ListCollectionCardsParams): Promise<PaginatedResponse<CollectionCard>> {
+      const qs = params
+        ? new URLSearchParams(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, String(v)])
+          ).toString()
+        : '';
+      return client.get<PaginatedResponse<CollectionCard>>(`/collections/${collectionId}/cards${qs ? `?${qs}` : ''}`);
     },
-    addItem(collectionId: string, body: AddCollectionItemBody): Promise<CollectionItem> {
-      return client.post<CollectionItem>(`/collections/${collectionId}/items`, body);
+    updateCard(collectionId: string, cardId: string, body: UpdateCollectionCardBody): Promise<CollectionCard> {
+      return client.patch<CollectionCard>(`/collections/${collectionId}/cards/${cardId}`, body);
     },
-    updateItem(collectionId: string, itemId: string, body: UpdateCollectionItemBody): Promise<CollectionItem> {
-      return client.patch<CollectionItem>(`/collections/${collectionId}/items/${itemId}`, body);
-    },
-    removeItem(collectionId: string, itemId: string): Promise<void> {
-      return client.delete<void>(`/collections/${collectionId}/items/${itemId}`);
+    removeCard(collectionId: string, cardId: string): Promise<void> {
+      return client.delete<void>(`/collections/${collectionId}/cards/${cardId}`);
     },
   };
 }

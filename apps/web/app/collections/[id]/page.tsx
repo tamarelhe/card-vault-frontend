@@ -1,7 +1,134 @@
+'use client';
+
+import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@cardvault/api';
+import { CONDITIONS } from '@cardvault/core';
+import { AppShell } from '@/components/AppShell';
+import { collectionsApi } from '@/lib/api-instance';
+import { IconFolder, IconSpinner } from '@/components/icons';
+
 export default function CollectionDetailPage({ params }: { params: { id: string } }) {
   return (
-    <main className="container mx-auto p-8">
-      <h1 className="text-3xl font-bold">Collection {params.id}</h1>
-    </main>
+    <AppShell>
+      <CollectionDetail id={params.id} />
+    </AppShell>
+  );
+}
+
+function CollectionDetail({ id }: { id: string }) {
+  const { data: collection, isLoading: loadingCol } = useQuery({
+    queryKey: queryKeys.collection(id),
+    queryFn: () => collectionsApi.getById(id),
+  });
+
+  const { data: cards, isLoading: loadingCards } = useQuery({
+    queryKey: queryKeys.collectionItems(id),
+    queryFn: () => collectionsApi.listCards(id, { page: 1, page_size: 50, sort_by: 'name', sort_order: 'asc' }),
+    enabled: !!collection,
+  });
+
+  const isLoading = loadingCol || loadingCards;
+
+  return (
+    <div className="flex-1 p-8">
+      {/* Breadcrumb */}
+      <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
+        <Link href="/collections" className="hover:text-slate-600">
+          Collections
+        </Link>
+        <span>/</span>
+        <span className="text-slate-700 font-medium">{collection?.name ?? '…'}</span>
+      </div>
+
+      {/* Header */}
+      <div className="mb-6 flex items-start gap-3">
+        <IconFolder className="mt-0.5 h-6 w-6 flex-shrink-0 text-blue-500" />
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{collection?.name ?? '…'}</h1>
+          {collection?.description && (
+            <p className="mt-1 text-sm text-slate-500">{collection.description}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center gap-2 py-12 text-sm text-slate-400">
+          <IconSpinner className="h-5 w-5 animate-spin" />
+          Loading…
+        </div>
+      )}
+
+      {/* Cards table */}
+      {!isLoading && (
+        <>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              {cards?.meta.total ?? 0} card{cards?.meta.total !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {!cards?.items.length ? (
+            <div className="py-16 text-center">
+              <p className="text-sm text-slate-500">This collection has no cards yet.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                    <th className="px-4 py-3">Card</th>
+                    <th className="px-4 py-3">Set</th>
+                    <th className="px-4 py-3">Condition</th>
+                    <th className="px-4 py-3 text-center">Qty</th>
+                    <th className="px-4 py-3 text-right">EUR</th>
+                    <th className="px-4 py-3 text-right">USD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {cards.items.map((card) => (
+                    <tr key={card.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/cards/${card.card_id}`}
+                          className="font-medium text-slate-900 hover:text-blue-600"
+                        >
+                          {card.card_name}
+                          {card.foil && (
+                            <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                              Foil
+                            </span>
+                          )}
+                        </Link>
+                        <p className="text-xs text-slate-400">{card.type_line}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">
+                        <span className="font-mono text-xs uppercase">{card.set_code}</span>
+                        <span className="ml-1 text-slate-400">#{card.collector_number}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          {CONDITIONS[card.condition]?.shortLabel ?? card.condition}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium text-slate-700">
+                        {card.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-600">
+                        {card.price_eur ? `€${parseFloat(card.price_eur).toFixed(2)}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-600">
+                        {card.price_usd ? `$${parseFloat(card.price_usd).toFixed(2)}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

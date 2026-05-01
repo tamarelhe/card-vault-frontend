@@ -1,10 +1,5 @@
-export interface User {
-  id: string;
-  email: string;
-  username: string;
-  createdAt: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
+export interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
 }

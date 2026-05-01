@@ -1,0 +1,8 @@
+.git
+.turbo
+.next
+node_modules
+apps/mobile
+**/.next
+**/node_modules
+*.md

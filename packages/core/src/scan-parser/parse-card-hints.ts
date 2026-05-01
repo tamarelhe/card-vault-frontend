@@ -59,5 +59,12 @@ export function parseCardHints(rawText: string, defaultGame: Game = 'mtg'): Pars
     1
   );
 
-  return { game, name, setCode, number, confidence, rawText };
+  return {
+    game,
+    ...(name !== undefined && { name }),
+    ...(setCode !== undefined && { setCode }),
+    ...(number !== undefined && { number }),
+    confidence,
+    rawText,
+  };
 }
