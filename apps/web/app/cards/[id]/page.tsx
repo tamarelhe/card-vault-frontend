@@ -1,15 +1,17 @@
 'use client';
 
+import { use } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { cardsApi } from '@/lib/api-instance';
 import { IconSpinner } from '@/components/icons';
 
-export default function CardDetailPage({ params }: { params: { id: string } }) {
+export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   return (
     <AppShell>
-      <CardDetail id={params.id} />
+      <CardDetail id={id} />
     </AppShell>
   );
 }

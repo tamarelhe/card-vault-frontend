@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
@@ -8,10 +9,11 @@ import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
 import { IconFolder, IconSpinner } from '@/components/icons';
 
-export default function CollectionDetailPage({ params }: { params: { id: string } }) {
+export default function CollectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   return (
     <AppShell>
-      <CollectionDetail id={params.id} />
+      <CollectionDetail id={id} />
     </AppShell>
   );
 }
