@@ -1,0 +1,33 @@
+{
+  "name": "@cardvault/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "build:ios": "eas build --platform ios",
+    "build:android": "eas build --platform android",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ app/"
+  },
+  "dependencies": {
+    "@cardvault/api": "workspace:*",
+    "@cardvault/core": "workspace:*",
+    "@cardvault/validation": "workspace:*",
+    "@tanstack/react-query": "^5.60.5",
+    "@hookform/resolvers": "^3.9.1",
+    "expo": "~52.0.0",
+    "expo-router": "~4.0.0",
+    "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-hook-form": "^7.53.2",
+    "react-native": "0.76.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cardvault/config": "workspace:*",
+    "@types/react": "~18.3.12",
+    "typescript": "^5.6.3"
+  }
+}
