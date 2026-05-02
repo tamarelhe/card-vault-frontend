@@ -21,6 +21,15 @@ export interface CardFace {
   artist?: string | null;
 }
 
+export interface CardPrices {
+  eur?: number | null;
+  eur_foil?: number | null;
+  eur_etched?: number | null;
+  usd?: number | null;
+  usd_foil?: number | null;
+  usd_etched?: number | null;
+}
+
 export interface Card {
   id: string;
   scryfall_id?: string | null;
@@ -54,6 +63,7 @@ export interface Card {
   border_color?: string | null;
   frame?: string | null;
   artist?: string | null;
+  prices?: CardPrices | null;
   updated_at: string;
 }
 

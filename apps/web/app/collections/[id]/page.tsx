@@ -103,7 +103,7 @@ function CollectionDetail({ id }: { id: string }) {
                       </td>
                       <td className="px-4 py-3 text-cv-neutral">
                         <span className="font-mono text-xs uppercase">{card.set_code}</span>
-                        <span className="ml-1 text-cv-border">#{card.collector_number}</span>
+                        <span className="ml-1 text-cv-border">#{card.collector_number.padStart(4, '0')}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="rounded border border-cv-border bg-cv-surface px-2 py-0.5 text-xs font-medium text-white">

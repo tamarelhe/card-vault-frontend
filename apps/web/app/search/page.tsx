@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
 import type { CardSearchParams } from '@cardvault/api';
+import { formatPrice } from '@cardvault/core';
 import { AppShell } from '@/components/AppShell';
 import { cardsApi } from '@/lib/api-instance';
 import {
@@ -415,31 +416,43 @@ function SearchContent() {
                   className="group flex flex-col overflow-hidden rounded-xl border border-cv-border bg-cv-surface text-left transition hover:border-primary/40 hover:bg-cv-overlay"
                 >
                   <div className="px-1 pt-1">
-                    <div className="aspect-[2/3] w-full overflow-hidden rounded-2xl">
-                      {card.image_uri ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={card.image_uri}
-                          alt={card.name}
-                          className="h-full w-full object-contain rounded-[5%] transition group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-cv-neutral">
-                          No image
-                        </div>
-                      )}
-                    </div>
+                    {card.image_uri ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={card.image_uri}
+                        alt={card.name}
+                        className="w-full rounded-[5%] transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-cv-deep text-xs text-cv-neutral">
+                        No image
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-1 p-3 pt-2">
+                  <div className="mt-auto flex flex-col gap-1 p-3 pt-2">
                     <p className="truncate text-sm font-semibold text-white">{card.name}</p>
                     <div className="flex items-center justify-between gap-1">
                       <p className="truncate text-[11px] uppercase tracking-wide text-cv-neutral">
-                        {card.set_code} · #{card.collector_number}
+                        {card.set_code} · #{card.collector_number.padStart(4, '0')}
                       </p>
                       <p className={['shrink-0 text-[11px] capitalize font-medium', RARITY_COLORS[card.rarity] ?? 'text-cv-neutral'].join(' ')}>
                         {card.rarity}
                       </p>
                     </div>
+                    {(card.prices?.eur != null || card.prices?.eur_foil != null) && (
+                      <div className="flex items-center gap-2 pt-0.5">
+                        {card.prices.eur != null && (
+                          <span className="text-[11px] font-medium text-white">
+                            {formatPrice(card.prices.eur, 'EUR')}
+                          </span>
+                        )}
+                        {card.prices.eur_foil != null && (
+                          <span className="text-[11px] text-primary-light">
+                            {formatPrice(card.prices.eur_foil, 'EUR')} ✦
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
