@@ -13,6 +13,8 @@ export interface CardSearchParams {
   power_op?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
   toughness?: string;
   toughness_op?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
+  colors?: string[];
+  color_match?: 'exact' | 'atmost' | 'including' | 'commander';
   sort_by?: 'name' | 'collector_number' | 'rarity' | 'cmc';
   sort_order?: 'asc' | 'desc';
   page?: number;
@@ -54,11 +56,16 @@ export interface PriceVariationsResponse {
 export function createCardsApi(client: ApiClient) {
   return {
     search(params: CardSearchParams): Promise<CardSearchResponse> {
-      const qs = new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v !== undefined && v !== '')
-          .map(([k, v]) => [k, String(v)])
-      ).toString();
+      const p = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === '' || v === null) continue;
+        if (Array.isArray(v)) {
+          v.forEach(item => p.append(k, String(item)));
+        } else {
+          p.set(k, String(v));
+        }
+      }
+      const qs = p.toString();
       return client.get<CardSearchResponse>(`/cards${qs ? `?${qs}` : ''}`);
     },
     getById(id: string): Promise<Card> {

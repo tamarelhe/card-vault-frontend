@@ -70,7 +70,7 @@ const MTG_COLORS = [
 const COLOR_MODES = [
   { value: 'including', label: 'Including these' },
   { value: 'exact', label: 'Exact these' },
-  { value: 'at_most', label: 'At most these' },
+  { value: 'atmost', label: 'At most these' },
   { value: 'commander', label: 'Commander Colors' },
 ];
 
@@ -108,6 +108,7 @@ export default function SearchPage() {
 // ─── URL ↔ state helpers ──────────────────────────────────────────────────────
 
 function paramsToFilters(p: URLSearchParams): CardSearchParams {
+  const colors = p.getAll('colors');
   return {
     q: p.get('q') ?? '',
     set_code: p.get('set_code') ?? '',
@@ -124,17 +125,22 @@ function paramsToFilters(p: URLSearchParams): CardSearchParams {
     sort_order: (p.get('sort_order') ?? 'asc') as 'asc' | 'desc',
     page: parseInt(p.get('page') ?? '1', 10),
     page_size: parseInt(p.get('page_size') ?? '20', 10),
+    ...(colors.length > 0 && {
+      colors,
+      color_match: (p.get('color_match') ?? 'exact') as NonNullable<CardSearchParams['color_match']>,
+    }),
   };
 }
 
-function filtersToUrl(filters: CardSearchParams, colors: string[], colorMode: string): string {
+function filtersToUrl(params: CardSearchParams): string {
   const p = new URLSearchParams();
-  for (const [k, v] of Object.entries(filters)) {
-    if (v !== '' && v !== null && v !== undefined) p.set(k, String(v));
-  }
-  if (colors.length > 0) {
-    p.set('colors', colors.join(','));
-    p.set('color_mode', colorMode);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === '' || v === null) continue;
+    if (Array.isArray(v)) {
+      v.forEach(item => p.append(k, String(item)));
+    } else {
+      p.set(k, String(v));
+    }
   }
   return `/search?${p.toString()}`;
 }
@@ -153,8 +159,8 @@ function SearchContent() {
   );
   const [expanded, setExpanded] = useState(false);
   const [colorFilter, setColorFilter] = useState(() => ({
-    colors: searchParams.get('colors')?.split(',').filter(Boolean) ?? [],
-    mode: searchParams.get('color_mode') ?? 'including',
+    colors: searchParams.getAll('colors'),
+    mode: searchParams.get('color_match') ?? 'including',
   }));
 
   const { data, isLoading, isError } = useQuery({
@@ -168,9 +174,16 @@ function SearchContent() {
   }
 
   function handleSearch(page = 1) {
-    const params = { ...filters, page };
+    const params: CardSearchParams = {
+      ...filters,
+      page,
+      ...(colorFilter.colors.length > 0 && {
+        colors: colorFilter.colors,
+        color_match: colorFilter.mode as NonNullable<CardSearchParams['color_match']>,
+      }),
+    };
     setSubmitted(params);
-    router.replace(filtersToUrl(params, colorFilter.colors, colorFilter.mode), { scroll: false });
+    router.replace(filtersToUrl(params), { scroll: false });
   }
 
   function handleReset() {
