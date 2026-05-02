@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { IconFolder, IconHome, IconLogOut, IconSpinner, IconStar, IconUser } from '@/components/icons';
+import { IconFolder, IconHome, IconLogOut, IconSearch, IconSpinner, IconStar, IconUser } from '@/components/icons';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', Icon: IconHome },
+  { href: '/search', label: 'Search', Icon: IconSearch },
   { href: '/collections', label: 'Collections', Icon: IconFolder },
   { href: '/watchlist', label: 'Watchlist', Icon: IconStar },
   { href: '/profile', label: 'Profile', Icon: IconUser },

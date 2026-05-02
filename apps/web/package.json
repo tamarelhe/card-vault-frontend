@@ -13,12 +13,13 @@
     "@cardvault/api": "workspace:*",
     "@cardvault/core": "workspace:*",
     "@cardvault/validation": "workspace:*",
-    "@tanstack/react-query": "^5.60.5",
     "@hookform/resolvers": "^3.9.1",
+    "@tanstack/react-query": "^5.60.5",
     "next": "^15.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.53.2",
+    "recharts": "^3.8.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
