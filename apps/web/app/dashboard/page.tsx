@@ -27,17 +27,15 @@ function DashboardContent() {
 
   return (
     <div className="flex-1 p-8">
-      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="font-serif text-2xl font-bold text-white">
           Welcome back, {firstName}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-cv-neutral">
           Here&apos;s an overview of your collection.
         </p>
       </div>
 
-      {/* Stats row */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Collections"
@@ -48,20 +46,19 @@ function DashboardContent() {
         <StatCard label="Collection value" value={null} placeholder />
       </div>
 
-      {/* Recent collections */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+      <div className="rounded-2xl border border-cv-border bg-cv-raised p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900">My Collections</h2>
+          <h2 className="text-base font-semibold text-white">My Collections</h2>
           <Link
             href="/collections"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="text-sm font-medium text-primary hover:text-primary-light"
           >
             View all
           </Link>
         </div>
 
         {isLoading && (
-          <div className="flex items-center gap-2 py-6 text-sm text-slate-400">
+          <div className="flex items-center gap-2 py-6 text-sm text-cv-neutral">
             <IconSpinner className="h-4 w-4 animate-spin" />
             Loading collections…
           </div>
@@ -69,14 +66,14 @@ function DashboardContent() {
 
         {!isLoading && (!data?.items.length) && (
           <div className="py-10 text-center">
-            <IconFolder className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-            <p className="text-sm font-medium text-slate-600">No collections yet</p>
-            <p className="mt-1 text-xs text-slate-400">
+            <IconFolder className="mx-auto mb-3 h-10 w-10 text-cv-border" />
+            <p className="text-sm font-medium text-white">No collections yet</p>
+            <p className="mt-1 text-xs text-cv-neutral">
               Create your first collection to start tracking cards.
             </p>
             <Link
               href="/collections"
-              className="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="mt-4 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
             >
               Create collection
             </Link>
@@ -84,17 +81,17 @@ function DashboardContent() {
         )}
 
         {!isLoading && !!data?.items.length && (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-cv-border">
             {data.items.map((col) => (
               <li key={col.id}>
                 <Link
                   href={`/collections/${col.id}`}
-                  className="flex items-center gap-3 py-3 text-sm hover:text-blue-600"
+                  className="flex items-center gap-3 py-3 text-sm transition-colors hover:text-primary"
                 >
-                  <IconFolder className="h-4 w-4 flex-shrink-0 text-slate-400" />
-                  <span className="flex-1 font-medium text-slate-800">{col.name}</span>
+                  <IconFolder className="h-4 w-4 flex-shrink-0 text-cv-neutral" />
+                  <span className="flex-1 font-medium text-white">{col.name}</span>
                   {col.description && (
-                    <span className="truncate text-slate-400 max-w-[180px]">{col.description}</span>
+                    <span className="max-w-[180px] truncate text-cv-neutral">{col.description}</span>
                   )}
                 </Link>
               </li>
@@ -118,14 +115,14 @@ function StatCard({
   placeholder?: boolean;
 }) {
   const content = (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-cv-border bg-cv-raised p-5">
+      <p className="text-xs font-medium uppercase tracking-wide text-cv-neutral">{label}</p>
       {value === null ? (
-        <p className="mt-2 text-2xl font-bold text-slate-300">
-          {placeholder ? '—' : <IconSpinner className="h-5 w-5 animate-spin text-slate-300" />}
+        <p className="mt-2 text-2xl font-bold text-cv-border">
+          {placeholder ? '—' : <IconSpinner className="h-5 w-5 animate-spin text-cv-neutral" />}
         </p>
       ) : (
-        <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+        <p className="mt-2 text-2xl font-bold text-white">{value}</p>
       )}
     </div>
   );

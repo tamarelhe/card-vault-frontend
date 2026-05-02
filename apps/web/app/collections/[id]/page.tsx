@@ -34,52 +34,48 @@ function CollectionDetail({ id }: { id: string }) {
 
   return (
     <div className="flex-1 p-8">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
-        <Link href="/collections" className="hover:text-slate-600">
+      <div className="mb-6 flex items-center gap-2 text-sm text-cv-neutral">
+        <Link href="/collections" className="transition-colors hover:text-white">
           Collections
         </Link>
         <span>/</span>
-        <span className="text-slate-700 font-medium">{collection?.name ?? '…'}</span>
+        <span className="font-medium text-white">{collection?.name ?? '…'}</span>
       </div>
 
-      {/* Header */}
       <div className="mb-6 flex items-start gap-3">
-        <IconFolder className="mt-0.5 h-6 w-6 flex-shrink-0 text-blue-500" />
+        <IconFolder className="mt-0.5 h-6 w-6 flex-shrink-0 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{collection?.name ?? '…'}</h1>
+          <h1 className="font-serif text-2xl font-bold text-white">{collection?.name ?? '…'}</h1>
           {collection?.description && (
-            <p className="mt-1 text-sm text-slate-500">{collection.description}</p>
+            <p className="mt-1 text-sm text-cv-neutral">{collection.description}</p>
           )}
         </div>
       </div>
 
-      {/* Loading */}
       {isLoading && (
-        <div className="flex items-center gap-2 py-12 text-sm text-slate-400">
+        <div className="flex items-center gap-2 py-12 text-sm text-cv-neutral">
           <IconSpinner className="h-5 w-5 animate-spin" />
           Loading…
         </div>
       )}
 
-      {/* Cards table */}
       {!isLoading && (
         <>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-cv-neutral">
               {cards?.meta.total ?? 0} card{cards?.meta.total !== 1 ? 's' : ''}
             </p>
           </div>
 
           {!cards?.items.length ? (
             <div className="py-16 text-center">
-              <p className="text-sm text-slate-500">This collection has no cards yet.</p>
+              <p className="text-sm text-cv-neutral">This collection has no cards yet.</p>
             </div>
           ) : (
-            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-cv-border bg-cv-raised">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                  <tr className="border-b border-cv-border bg-cv-surface text-left text-xs font-medium uppercase tracking-wide text-cv-neutral">
                     <th className="px-4 py-3">Card</th>
                     <th className="px-4 py-3">Set</th>
                     <th className="px-4 py-3">Condition</th>
@@ -88,39 +84,39 @@ function CollectionDetail({ id }: { id: string }) {
                     <th className="px-4 py-3 text-right">USD</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-cv-border">
                   {cards.items.map((card) => (
-                    <tr key={card.id} className="hover:bg-gray-50">
+                    <tr key={card.id} className="transition-colors hover:bg-cv-overlay">
                       <td className="px-4 py-3">
                         <Link
                           href={`/cards/${card.card_id}`}
-                          className="font-medium text-slate-900 hover:text-blue-600"
+                          className="font-medium text-white transition-colors hover:text-primary-light"
                         >
                           {card.card_name}
                           {card.foil && (
-                            <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                            <span className="ml-1.5 rounded bg-tertiary/20 px-1.5 py-0.5 text-[10px] font-medium text-tertiary-light">
                               Foil
                             </span>
                           )}
                         </Link>
-                        <p className="text-xs text-slate-400">{card.type_line}</p>
+                        <p className="text-xs text-cv-neutral">{card.type_line}</p>
                       </td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-cv-neutral">
                         <span className="font-mono text-xs uppercase">{card.set_code}</span>
-                        <span className="ml-1 text-slate-400">#{card.collector_number}</span>
+                        <span className="ml-1 text-cv-border">#{card.collector_number}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        <span className="rounded border border-cv-border bg-cv-surface px-2 py-0.5 text-xs font-medium text-white">
                           {CONDITIONS[card.condition]?.shortLabel ?? card.condition}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-slate-700">
+                      <td className="px-4 py-3 text-center font-medium text-white">
                         {card.quantity}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-600">
+                      <td className="px-4 py-3 text-right text-cv-neutral">
                         {card.price_eur ? `€${parseFloat(card.price_eur).toFixed(2)}` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-600">
+                      <td className="px-4 py-3 text-right text-cv-neutral">
                         {card.price_usd ? `$${parseFloat(card.price_usd).toFixed(2)}` : '—'}
                       </td>
                     </tr>
