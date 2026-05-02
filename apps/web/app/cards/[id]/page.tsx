@@ -31,18 +31,6 @@ function parseSymbols(text: string): React.ReactNode[] {
   });
 }
 
-function OracleText({ text }: { text: string }) {
-  return (
-    <div className="rounded-xl border border-cv-border bg-cv-raised px-4 py-3 text-sm leading-relaxed text-slate-300">
-      {text.split('\n').map((line, i) => (
-        <p key={i} className={i > 0 ? 'mt-2' : ''}>
-          {parseSymbols(line)}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 // ─── Price chart (mock data) ──────────────────────────────────────────────────
 
 type Period = '1d' | '7d' | '30d' | '90d';
