@@ -28,7 +28,7 @@ function ManaSymbol({ code }: { code: string }) {
 function parseSymbols(text: string): React.ReactNode[] {
   return text.split(/(\{[^}]+\})/).map((part, i) => {
     const match = part.match(/^\{([^}]+)\}$/);
-    return match ? <ManaSymbol key={i} code={match[1]} /> : part;
+    return match ? <ManaSymbol key={i} code={match[1]!} /> : part;
   });
 }
 
