@@ -9,7 +9,7 @@ import { queryKeys } from '@cardvault/api';
 import { createCollectionSchema, type CreateCollectionInput } from '@cardvault/validation';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
-import { IconFolder, IconSpinner, IconUpload, IconUsers, IconX } from '@/components/icons';
+import { IconFolder, IconPlus, IconSpinner, IconUpload, IconUsers, IconX } from '@/components/icons';
 
 // ─── Import formats ───────────────────────────────────────────────────────────
 
@@ -76,16 +76,19 @@ function CollectionsContent() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
+            className="flex items-center gap-2 rounded-lg border border-cv-border px-3 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white sm:px-4"
+            aria-label="Import"
           >
-            <IconUpload className="h-4 w-4" />
-            Import
+            <IconUpload className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Import</span>
           </button>
           <button
             onClick={() => setShowCreate(v => !v)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+            className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark sm:px-4"
+            aria-label="New collection"
           >
-            New collection
+            <IconPlus className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">New collection</span>
           </button>
         </div>
       </div>
