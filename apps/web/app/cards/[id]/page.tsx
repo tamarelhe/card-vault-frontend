@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { queryKeys } from '@cardvault/api';
 import { formatPrice } from '@cardvault/core';
@@ -189,8 +189,6 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 function CardDetail({ id }: { id: string }) {
-  const router = useRouter();
-
   const { data: card, isLoading, isError } = useQuery({
     queryKey: queryKeys.card(id),
     queryFn: () => cardsApi.getById(id),
