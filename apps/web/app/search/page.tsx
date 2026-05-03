@@ -74,7 +74,7 @@ function buildCardSearchParams(
 ): CardSearchParams {
   return {
     ...panel,
-    sort_by: panel.sort_by as CardSearchParams['sort_by'],
+    sort_by: panel.sort_by as NonNullable<CardSearchParams['sort_by']>,
     page,
     page_size: 20,
     ...(colorFilter.colors.length > 0 && {

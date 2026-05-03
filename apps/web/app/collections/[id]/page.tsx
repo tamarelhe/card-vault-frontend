@@ -82,7 +82,7 @@ function CollectionDetail({ id }: { id: string }) {
       ...(filters.mana_cost      && { mana_cost:        filters.mana_cost }),
       ...(filters.power          && { power:            filters.power }),
       ...(filters.toughness      && { toughness:        filters.toughness }),
-      sort_by:    filters.sort_by as ListCollectionCardsParams['sort_by'],
+      sort_by:    filters.sort_by as NonNullable<ListCollectionCardsParams['sort_by']>,
       sort_order: filters.sort_order,
       page,
       page_size: 20,
