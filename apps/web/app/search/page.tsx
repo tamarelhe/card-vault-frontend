@@ -170,6 +170,17 @@ function SearchContent() {
     enabled: submitted !== null,
   });
 
+  useEffect(() => {
+    if (!data) return;
+    const saved = sessionStorage.getItem('search-scroll');
+    if (!saved) return;
+    requestAnimationFrame(() => {
+      const main = document.querySelector('main');
+      if (main) main.scrollTop = parseInt(saved, 10);
+      sessionStorage.removeItem('search-scroll');
+    });
+  }, [data]);
+
   function set<K extends keyof CardSearchParams>(key: K, value: CardSearchParams[K]) {
     setFilters(f => ({ ...f, [key]: value }));
   }
@@ -412,7 +423,11 @@ function SearchContent() {
               {data.items.map(card => (
                 <button
                   key={card.id}
-                  onClick={() => router.push(`/cards/${card.id}`)}
+                  onClick={() => {
+                    const main = document.querySelector('main');
+                    if (main) sessionStorage.setItem('search-scroll', String(main.scrollTop));
+                    router.push(`/cards/${card.id}`);
+                  }}
                   className="group flex flex-col overflow-hidden rounded-xl border border-cv-border bg-cv-surface text-left transition hover:border-primary/40 hover:bg-cv-overlay"
                 >
                   <div className="px-1 pt-1">

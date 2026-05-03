@@ -220,15 +220,6 @@ function CardDetail({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6 p-6 lg:p-8">
 
-      {/* Back button */}
-      <button
-        onClick={() => router.back()}
-        className="flex w-fit items-center gap-1.5 rounded-lg border border-cv-border px-3 py-1.5 text-sm text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
-      >
-        <IconChevronLeft className="h-4 w-4" />
-        Back
-      </button>
-
       {/* ── 3-column layout ── */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] lg:grid-cols-[auto_420px_1fr]">
 
