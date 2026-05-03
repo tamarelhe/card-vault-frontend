@@ -75,15 +75,15 @@ function CollectionDetail({ id }: { id: string }) {
 
   function handleSearch(page = 1) {
     const params: ListCollectionCardsParams = {
-      q:                filters.q || undefined,
-      set_code:         filters.set_code || undefined,
-      collector_number: filters.collector_number || undefined,
-      card_type:        filters.card_type || undefined,
-      mana_cost:        filters.mana_cost || undefined,
-      power:            filters.power || undefined,
-      toughness:        filters.toughness || undefined,
-      sort_by:          filters.sort_by as ListCollectionCardsParams['sort_by'],
-      sort_order:       filters.sort_order,
+      ...(filters.q              && { q:                filters.q }),
+      ...(filters.set_code       && { set_code:         filters.set_code }),
+      ...(filters.collector_number && { collector_number: filters.collector_number }),
+      ...(filters.card_type      && { card_type:        filters.card_type }),
+      ...(filters.mana_cost      && { mana_cost:        filters.mana_cost }),
+      ...(filters.power          && { power:            filters.power }),
+      ...(filters.toughness      && { toughness:        filters.toughness }),
+      sort_by:    filters.sort_by as ListCollectionCardsParams['sort_by'],
+      sort_order: filters.sort_order,
       page,
       page_size: 20,
     };
