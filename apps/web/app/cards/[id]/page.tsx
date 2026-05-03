@@ -47,12 +47,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
 
-function fmtPct(pct: string | null | undefined): string | null {
-  if (pct == null) return null;
-  const n = parseFloat(pct);
-  if (isNaN(n)) return null;
-  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-}
 
 function PriceChart({ id }: { id: string }) {
   const [period, setPeriod] = useState<Period>('30d');
