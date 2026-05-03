@@ -91,8 +91,9 @@ function PriceChart({ id }: { id: string }) {
 
   const historyDelta = useMemo(() => {
     if (data.length < 2) return null;
-    const first = data[0].value as number;
-    const last = data[data.length - 1].value as number;
+    const first = data[0]?.value as number | undefined;
+    const last = data[data.length - 1]?.value as number | undefined;
+    if (first == null || last == null) return null;
     if (first === 0) return null;
     return ((last - first) / first) * 100;
   }, [data]);
