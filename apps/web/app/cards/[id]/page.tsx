@@ -208,7 +208,6 @@ const CONDITIONS = [
   { value: 'damaged', label: 'Damaged' },
 ] as const;
 
-const ctrlCls = 'rounded-lg border border-cv-border bg-cv-surface px-2.5 py-1.5 text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30';
 
 function AddToCollection({ cardId }: { cardId: string }) {
   const queryClient = useQueryClient();
