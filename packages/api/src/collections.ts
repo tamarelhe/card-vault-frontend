@@ -4,11 +4,13 @@ import type { Collection, CollectionCard, PaginatedResponse } from '@cardvault/c
 export interface CreateCollectionBody {
   name: string;
   description?: string;
+  visibility?: 'public' | 'private';
 }
 
 export interface UpdateCollectionBody {
   name?: string;
   description?: string;
+  visibility?: 'public' | 'private';
 }
 
 export interface AddCollectionCardBody {
@@ -34,11 +36,17 @@ export interface ListCollectionCardsParams {
   q?: string;
   set_code?: string;
   collector_number?: string;
+  rarity?: string;
   card_type?: string;
   mana_cost?: string;
+  mana_cost_op?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
   power?: string;
+  power_op?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
   toughness?: string;
-  sort_by?: 'name' | 'collector_number' | 'rarity' | 'condition' | 'quantity' | 'added_at' | 'price';
+  toughness_op?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
+  colors?: string[];
+  color_match?: 'exact' | 'atmost' | 'including' | 'commander';
+  sort_by?: 'name' | 'collector_number' | 'rarity' | 'cmc' | 'condition' | 'quantity' | 'added_at' | 'price';
   sort_order?: 'asc' | 'desc';
 }
 
@@ -67,13 +75,13 @@ export function createCollectionsApi(client: ApiClient) {
       return client.delete<void>(`/collections/${id}`);
     },
     listCards(collectionId: string, params?: ListCollectionCardsParams): Promise<PaginatedResponse<CollectionCard>> {
-      const qs = params
-        ? new URLSearchParams(
-            Object.entries(params)
-              .filter(([, v]) => v !== undefined)
-              .map(([k, v]) => [k, String(v)])
-          ).toString()
-        : '';
+      const p = new URLSearchParams();
+      for (const [k, v] of Object.entries(params ?? {})) {
+        if (v === undefined || v === '' || v === null) continue;
+        if (Array.isArray(v)) v.forEach(item => p.append(k, String(item)));
+        else p.set(k, String(v));
+      }
+      const qs = p.toString();
       return client.get<PaginatedResponse<CollectionCard>>(`/collections/${collectionId}/cards${qs ? `?${qs}` : ''}`);
     },
     addCard(collectionId: string, body: AddCollectionCardBody): Promise<CollectionCard> {

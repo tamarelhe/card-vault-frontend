@@ -8,10 +8,12 @@ import { queryKeys } from '@cardvault/api';
 import type { ListCollectionCardsParams } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
-import { IconChevronLeft, IconChevronRight, IconFolder, IconSpinner } from '@/components/icons';
+import { IconChevronLeft, IconChevronRight, IconFolder, IconGlobe, IconLock, IconSpinner } from '@/components/icons';
 import {
   CardFilterPanel,
+  EMPTY_COLOR_FILTER,
   EMPTY_PANEL,
+  type ColorFilterState,
   type PanelFilters,
 } from '@/components/CardFilterPanel';
 
@@ -21,6 +23,7 @@ const SORT_FIELDS = [
   { value: 'name',             label: 'Name' },
   { value: 'collector_number', label: 'Collector #' },
   { value: 'rarity',           label: 'Rarity' },
+  { value: 'cmc',              label: 'Mana Cost' },
   { value: 'condition',        label: 'Condition' },
   { value: 'quantity',         label: 'Quantity' },
   { value: 'added_at',         label: 'Date Added' },
@@ -61,6 +64,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
 function CollectionDetail({ id }: { id: string }) {
   const router = useRouter();
   const [filters, setFilters] = useState<PanelFilters>(EMPTY_PANEL);
+  const [colorFilter, setColorFilter] = useState<ColorFilterState>(EMPTY_COLOR_FILTER);
   const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
 
   const { data: collection } = useQuery({
@@ -75,13 +79,18 @@ function CollectionDetail({ id }: { id: string }) {
 
   function handleSearch(page = 1) {
     const params: ListCollectionCardsParams = {
-      ...(filters.q              && { q:                filters.q }),
-      ...(filters.set_code       && { set_code:         filters.set_code }),
+      ...(filters.q                && { q:                filters.q }),
+      ...(filters.set_code         && { set_code:         filters.set_code }),
       ...(filters.collector_number && { collector_number: filters.collector_number }),
-      ...(filters.card_type      && { card_type:        filters.card_type }),
-      ...(filters.mana_cost      && { mana_cost:        filters.mana_cost }),
-      ...(filters.power          && { power:            filters.power }),
-      ...(filters.toughness      && { toughness:        filters.toughness }),
+      ...(filters.rarity           && { rarity:           filters.rarity }),
+      ...(filters.card_type        && { card_type:        filters.card_type }),
+      ...(filters.mana_cost        && { mana_cost:        filters.mana_cost, mana_cost_op: filters.mana_cost_op }),
+      ...(filters.power            && { power:            filters.power, power_op: filters.power_op }),
+      ...(filters.toughness        && { toughness:        filters.toughness, toughness_op: filters.toughness_op }),
+      ...(colorFilter.colors.length > 0 && {
+        colors: colorFilter.colors,
+        color_match: colorFilter.mode as NonNullable<ListCollectionCardsParams['color_match']>,
+      }),
       sort_by:    filters.sort_by as NonNullable<ListCollectionCardsParams['sort_by']>,
       sort_order: filters.sort_order,
       page,
@@ -92,12 +101,20 @@ function CollectionDetail({ id }: { id: string }) {
 
   function handleReset() {
     setFilters(EMPTY_PANEL);
+    setColorFilter(EMPTY_COLOR_FILTER);
     setSubmitted({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
   }
 
+  function toggleColor(code: string) {
+    setColorFilter(f => ({
+      ...f,
+      colors: f.colors.includes(code) ? f.colors.filter(c => c !== code) : [...f.colors, code],
+    }));
+  }
+
   const extraFilterCount =
-    [filters.card_type, filters.mana_cost, filters.power, filters.toughness]
-      .filter(Boolean).length;
+    [filters.card_type, filters.rarity, filters.mana_cost, filters.power, filters.toughness]
+      .filter(Boolean).length + (colorFilter.colors.length > 0 ? 1 : 0);
 
   const totalPages = cards ? Math.ceil(cards.meta.total / 20) : 0;
   const currentPage = submitted.page ?? 1;
@@ -114,10 +131,26 @@ function CollectionDetail({ id }: { id: string }) {
       {/* Header */}
       <div className="flex items-start gap-3">
         <IconFolder className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-        <div>
-          <h1 className="font-serif text-2xl font-bold text-white">{collection?.name ?? '…'}</h1>
-          {collection?.description && (
-            <p className="mt-1 text-sm text-cv-neutral">{collection.description}</p>
+        <div className="flex-1">
+          <div className="flex items-center gap-4">
+            <h1 className="font-serif text-2xl font-bold text-white">{collection?.name ?? '…'}</h1>
+            {collection?.description && (
+              <p className="text-sm text-cv-neutral">{collection.description}</p>
+            )}
+          </div>
+          {collection && (
+            <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-cv-neutral">
+              <span>{collection.total_cards} cards</span>
+              <span>·</span>
+              <span>€{collection.total_value_eur.toFixed(2)}</span>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                {collection.visibility === 'public'
+                  ? <><IconGlobe className="h-3 w-3" /> Public</>
+                  : <><IconLock className="h-3 w-3" /> Private</>
+                }
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -125,14 +158,17 @@ function CollectionDetail({ id }: { id: string }) {
       {/* Filter panel */}
       <CardFilterPanel
         filters={filters}
+        colorFilter={colorFilter}
         extraFilterCount={extraFilterCount}
         onChange={(key, value) => setFilters(f => ({ ...f, [key]: value }))}
+        onColorToggle={toggleColor}
+        onColorMode={mode => setColorFilter(f => ({ ...f, mode }))}
         onSearch={handleSearch}
         onReset={handleReset}
         sortOptions={SORT_FIELDS}
-        showRarity={false}
-        showNumericOps={false}
-        showColors={false}
+        showRarity
+        showNumericOps
+        showColors
       />
 
       {isLoading && (

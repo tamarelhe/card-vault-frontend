@@ -3,6 +3,7 @@ import {
   createAuthApi,
   createCardsApi,
   createCollectionsApi,
+  createImportsApi,
   createScanApi,
 } from '@cardvault/api';
 
@@ -26,4 +27,5 @@ export const apiClient = createApiClient({
 export const authApi = createAuthApi(apiClient);
 export const cardsApi = createCardsApi(apiClient);
 export const collectionsApi = createCollectionsApi(apiClient);
+export const importsApi = createImportsApi(apiClient);
 export const scanApi = createScanApi(apiClient);

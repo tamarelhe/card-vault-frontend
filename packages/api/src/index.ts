@@ -18,4 +18,7 @@ export type {
 
 export { createScanApi } from './scan';
 
+export { createImportsApi } from './imports';
+export type { SubmitImportBody } from './imports';
+
 export { queryKeys } from './query-keys';

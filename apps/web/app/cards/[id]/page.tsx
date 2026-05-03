@@ -7,7 +7,7 @@ import { queryKeys } from '@cardvault/api';
 import { formatPrice } from '@cardvault/core';
 import { AppShell } from '@/components/AppShell';
 import { cardsApi, collectionsApi } from '@/lib/api-instance';
-import { IconFolder, IconSpinner } from '@/components/icons';
+import { IconFolder, IconPlus, IconSpinner, IconX } from '@/components/icons';
 
 // ─── Mana symbol helpers ──────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ function PriceChart({ id }: { id: string }) {
   }, [data]);
 
   const pctValue = !isNaN(apiPct) ? apiPct : historyDelta;
-  const deltaPct = pctValue != null ? `${pctValue >= 0 ? '+' : '-'}${pctValue.toFixed(2)}%` : null;
+  const deltaPct = pctValue != null ? `${pctValue >= 0 ? '+' : ''}${pctValue.toFixed(2)}%` : null;
 
   const direction = pctValue == null ? 'stable'
     : pctValue > 0.5 ? 'up'
@@ -197,7 +197,7 @@ function PriceChart({ id }: { id: string }) {
   );
 }
 
-// ─── Add to collection ────────────────────────────────────────────────────────
+// ─── Add to collection modal ──────────────────────────────────────────────────
 
 const CONDITIONS = [
   { value: 'mint', label: 'Mint' },
@@ -208,8 +208,7 @@ const CONDITIONS = [
   { value: 'damaged', label: 'Damaged' },
 ] as const;
 
-
-function AddToCollection({ cardId }: { cardId: string }) {
+function AddToCollectionModal({ cardId, onClose }: { cardId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [collectionId, setCollectionId] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -233,64 +232,106 @@ function AddToCollection({ cardId }: { cardId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collection(collectionId) });
       setAdded(true);
-      setTimeout(() => setAdded(false), 2500);
+      setTimeout(() => { setAdded(false); onClose(); }, 1500);
     },
   });
 
-  if (!collections?.items.length) return null;
+  const inputCls =
+    'block w-full rounded-lg border border-cv-border bg-cv-surface px-3 py-2 text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50';
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-cv-border bg-cv-raised px-3 py-2.5">
-      {/* Collection */}
-      <select
-        value={collectionId}
-        onChange={e => setCollectionId(e.target.value)}
-        className="w-32 rounded-lg border border-cv-border bg-cv-surface px-2 py-1 text-xs text-white focus:border-primary/60 focus:outline-none"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
       >
-        <option value="">Collection…</option>
-        {collections.items.map(col => (
-          <option key={col.id} value={col.id}>{col.name}</option>
-        ))}
-      </select>
-
-      {/* Quantity */}
-      <div className="flex items-center overflow-hidden rounded-lg border border-cv-border bg-cv-surface text-xs">
-        <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-2 py-1 text-cv-neutral hover:text-white">−</button>
-        <span className="min-w-5 text-center font-medium text-white">{quantity}</span>
-        <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-2 py-1 text-cv-neutral hover:text-white">+</button>
-      </div>
-
-      {/* Foil toggle */}
-      <div className="flex rounded-lg border border-cv-border bg-cv-surface p-0.5 text-xs">
-        {[{ v: false, l: 'Reg' }, { v: true, l: 'Foil' }].map(({ v, l }) => (
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">Add to collection</h2>
           <button
-            key={l} type="button" onClick={() => setFoil(v)}
-            className={['rounded px-2 py-0.5 font-medium transition-colors', foil === v ? 'bg-primary text-white' : 'text-cv-neutral hover:text-white'].join(' ')}
-          >{l}</button>
-        ))}
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-cv-neutral transition-colors hover:bg-cv-overlay hover:text-white"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* Row 1: Collection + Quantity */}
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                Collection
+              </label>
+              <select value={collectionId} onChange={e => setCollectionId(e.target.value)} className={inputCls}>
+                <option value="">Select a collection…</option>
+                {collections?.items.map(col => (
+                  <option key={col.id} value={col.id}>{col.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="shrink-0">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                Qty
+              </label>
+              <div className="flex items-center overflow-hidden rounded-lg border border-cv-border bg-cv-surface text-sm">
+                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-2.5 py-2 text-cv-neutral hover:text-white">−</button>
+                <span className="min-w-6 text-center font-medium text-white">{quantity}</span>
+                <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-2.5 py-2 text-cv-neutral hover:text-white">+</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Condition + Printing */}
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                Condition
+              </label>
+              <select value={condition} onChange={e => setCondition(e.target.value)} className={inputCls}>
+                {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="shrink-0">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                Printing
+              </label>
+              <div className="flex rounded-lg border border-cv-border bg-cv-surface p-0.5">
+                {[{ v: false, l: 'Regular' }, { v: true, l: 'Foil' }].map(({ v, l }) => (
+                  <button
+                    key={l} type="button" onClick={() => setFoil(v)}
+                    className={['rounded px-3 py-1.5 text-xs font-medium transition-colors', foil === v ? 'bg-primary text-white' : 'text-cv-neutral hover:text-white'].join(' ')}
+                  >{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={() => mutateAsync()}
+              disabled={!collectionId || isPending}
+              className={[
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60',
+                added ? 'bg-secondary text-white' : 'bg-primary text-white hover:bg-primary-dark',
+              ].join(' ')}
+            >
+              {isPending && <IconSpinner className="h-4 w-4 animate-spin" />}
+              {added ? 'Added!' : 'Add'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Condition */}
-      <select
-        value={condition}
-        onChange={e => setCondition(e.target.value)}
-        className="rounded-lg border border-cv-border bg-cv-surface px-2 py-1 text-xs text-white focus:border-primary/60 focus:outline-none"
-      >
-        {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-      </select>
-
-      {/* Add */}
-      <button
-        onClick={() => mutateAsync()}
-        disabled={!collectionId || isPending}
-        className={[
-          'flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50',
-          added ? 'bg-secondary text-white' : 'bg-primary text-white hover:bg-primary-dark',
-        ].join(' ')}
-      >
-        {isPending && <IconSpinner className="h-3 w-3 animate-spin" />}
-        {added ? 'Added!' : 'Add'}
-      </button>
     </div>
   );
 }
@@ -344,6 +385,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 function CardDetail({ id }: { id: string }) {
+  const [showAddModal, setShowAddModal] = useState(false);
   const { data: card, isLoading, isError } = useQuery({
     queryKey: queryKeys.card(id),
     queryFn: () => cardsApi.getById(id),
@@ -444,38 +486,29 @@ function CardDetail({ id }: { id: string }) {
             )}
           </div>
 
-          {/* Card faces */}
-          {card.card_faces && card.card_faces.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {card.card_faces.map((face, i) => (
-                <div key={i} className="rounded-xl border border-cv-border bg-cv-raised px-4 py-3 text-sm">
-                  <p className="font-semibold text-white">{face.name}</p>
-                  {face.type_line && <p className="text-xs text-cv-neutral">{face.type_line}</p>}
-                  {face.oracle_text && (
-                    <div className="mt-1 text-slate-300">
-                      {face.oracle_text.split('\n').map((line, j) => (
-                        <p key={j} className={j > 0 ? 'mt-1' : ''}>{parseSymbols(line)}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add to collection */}
-          <AddToCollection cardId={id} />
-
           {/* Collections */}
           <div className="flex flex-col gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">
-              In collections
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">
+                In collections
+              </h2>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-cv-border px-2.5 py-1 text-xs font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
+              >
+                <IconPlus className="h-3 w-3" />
+                Add to my collections
+              </button>
+            </div>
             <div className="flex flex-col items-center gap-2 rounded-xl border border-cv-border bg-cv-raised px-4 py-8 text-center">
               <IconFolder className="h-8 w-8 text-cv-border" />
               <p className="text-xs text-cv-neutral">No collections yet</p>
             </div>
           </div>
+
+          {showAddModal && (
+            <AddToCollectionModal cardId={id} onClose={() => setShowAddModal(false)} />
+          )}
         </div>
 
         {/* Col 3 — Prices + Chart */}

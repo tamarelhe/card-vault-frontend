@@ -69,9 +69,25 @@ export function createApiClient(config: ApiClientConfig) {
     }
   }
 
+  async function requestForm<T>(method: string, path: string, body: FormData): Promise<T> {
+    const token = config.getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${config.baseUrl}${path}`, { method, headers, body });
+
+    try {
+      return await parseResponse<T>(res);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) config.onUnauthorized?.();
+      throw err;
+    }
+  }
+
   return {
     get: <T>(path: string) => request<T>('GET', path),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+    postForm: <T>(path: string, body: FormData) => requestForm<T>('POST', path, body),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
     delete: <T>(path: string) => request<T>('DELETE', path),

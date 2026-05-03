@@ -2,8 +2,10 @@ export interface Collection {
   id: string;
   name: string;
   description: string;
-  card_count?: number | null;
-  total_value?: string | null;
+  visibility: 'public' | 'private';
+  total_cards: number;
+  total_value_eur: number;
+  total_value_usd: number;
   created_at: string;
   updated_at: string;
 }

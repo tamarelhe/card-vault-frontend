@@ -166,7 +166,14 @@ function SearchContent() {
   const currentPage = submitted?.page ?? 1;
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex-1 p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="font-serif text-2xl font-bold text-white">Find a card</h1>
+        </div>        
+      </div>
+
       <CardFilterPanel
         filters={filters}
         colorFilter={colorFilter}

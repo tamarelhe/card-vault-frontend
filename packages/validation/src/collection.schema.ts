@@ -12,6 +12,7 @@ const conditions = [
 export const createCollectionSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional(),
+  visibility: z.enum(['public', 'private']).default('private'),
 });
 
 export const updateCollectionCardSchema = z.object({
