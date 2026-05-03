@@ -183,7 +183,7 @@ function PriceChart({ id }: { id: string }) {
             />
             <Bar dataKey="value" radius={[3, 3, 0, 0]}>
               {data.map((_, i) => (
-                <Cell key={i} fill={colors[i] ?? colors[0]} />
+                <Cell key={i} fill={colors[i] ?? colors[0] ?? '#8B5CF6'} />
               ))}
             </Bar>
           </BarChart>
