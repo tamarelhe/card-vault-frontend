@@ -8,10 +8,12 @@ import { queryKeys } from '@cardvault/api';
 import type { ListCollectionCardsParams } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
+import { IconChevronLeft, IconChevronRight, IconFolder, IconSpinner } from '@/components/icons';
 import {
-  IconChevronLeft, IconChevronRight, IconFolder,
-  IconSearch, IconSpinner,
-} from '@/components/icons';
+  CardFilterPanel,
+  EMPTY_PANEL,
+  type PanelFilters,
+} from '@/components/CardFilterPanel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -23,7 +25,7 @@ const SORT_FIELDS = [
   { value: 'quantity',         label: 'Quantity' },
   { value: 'added_at',         label: 'Date Added' },
   { value: 'price',            label: 'Price' },
-] as const;
+];
 
 const RARITY_COLORS: Record<string, string> = {
   common:   'text-slate-400',
@@ -43,10 +45,6 @@ const CONDITION_SHORT: Record<string, string> = {
   damaged:            'D',
 };
 
-const EMPTY_FILTERS: ListCollectionCardsParams = {
-  q: '', set_code: '', sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20,
-};
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CollectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,8 +60,8 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
 
 function CollectionDetail({ id }: { id: string }) {
   const router = useRouter();
-  const [filters, setFilters] = useState<ListCollectionCardsParams>(EMPTY_FILTERS);
-  const [submitted, setSubmitted] = useState<ListCollectionCardsParams>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<PanelFilters>(EMPTY_PANEL);
+  const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
 
   const { data: collection } = useQuery({
     queryKey: queryKeys.collection(id),
@@ -75,20 +73,33 @@ function CollectionDetail({ id }: { id: string }) {
     queryFn: () => collectionsApi.listCards(id, submitted),
   });
 
-  function set<K extends keyof ListCollectionCardsParams>(key: K, value: ListCollectionCardsParams[K]) {
-    setFilters(f => ({ ...f, [key]: value }));
-  }
-
   function handleSearch(page = 1) {
-    setSubmitted({ ...filters, page });
+    const params: ListCollectionCardsParams = {
+      q:                filters.q || undefined,
+      set_code:         filters.set_code || undefined,
+      collector_number: filters.collector_number || undefined,
+      card_type:        filters.card_type || undefined,
+      mana_cost:        filters.mana_cost || undefined,
+      power:            filters.power || undefined,
+      toughness:        filters.toughness || undefined,
+      sort_by:          filters.sort_by as ListCollectionCardsParams['sort_by'],
+      sort_order:       filters.sort_order,
+      page,
+      page_size: 20,
+    };
+    setSubmitted(params);
   }
 
   function handleReset() {
-    setFilters(EMPTY_FILTERS);
-    setSubmitted(EMPTY_FILTERS);
+    setFilters(EMPTY_PANEL);
+    setSubmitted({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
   }
 
-  const totalPages = cards ? Math.ceil(cards.meta.total / (submitted.page_size ?? 20)) : 0;
+  const extraFilterCount =
+    [filters.card_type, filters.mana_cost, filters.power, filters.toughness]
+      .filter(Boolean).length;
+
+  const totalPages = cards ? Math.ceil(cards.meta.total / 20) : 0;
   const currentPage = submitted.page ?? 1;
 
   return (
@@ -111,80 +122,19 @@ function CollectionDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Filter row */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-cv-border bg-cv-raised p-3">
-        {/* Card name */}
-        <div className="flex min-w-44 flex-1 flex-col gap-1">
-          <label className="text-[10px] font-medium uppercase tracking-wide text-cv-neutral">Card name</label>
-          <div className="relative">
-            <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cv-neutral" />
-            <input
-              type="text"
-              placeholder="Search…"
-              value={filters.q ?? ''}
-              onChange={e => set('q', e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              className={inputCls + ' pl-8'}
-            />
-          </div>
-        </div>
+      {/* Filter panel */}
+      <CardFilterPanel
+        filters={filters}
+        extraFilterCount={extraFilterCount}
+        onChange={(key, value) => setFilters(f => ({ ...f, [key]: value }))}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        sortOptions={SORT_FIELDS}
+        showRarity={false}
+        showNumericOps={false}
+        showColors={false}
+      />
 
-        {/* Set code */}
-        <div className="flex w-28 flex-col gap-1">
-          <label className="text-[10px] font-medium uppercase tracking-wide text-cv-neutral">Set</label>
-          <input
-            type="text"
-            placeholder="All sets"
-            value={filters.set_code ?? ''}
-            onChange={e => set('set_code', e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            className={inputCls}
-          />
-        </div>
-
-        {/* Sort by */}
-        <div className="flex w-36 flex-col gap-1">
-          <label className="text-[10px] font-medium uppercase tracking-wide text-cv-neutral">Sort by</label>
-          <select
-            value={filters.sort_by}
-            onChange={e => set('sort_by', e.target.value as ListCollectionCardsParams['sort_by'])}
-            className={selectCls}
-          >
-            {SORT_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
-        </div>
-
-        {/* Sort order */}
-        <div className="flex w-28 flex-col gap-1">
-          <label className="text-[10px] font-medium uppercase tracking-wide text-cv-neutral">Order</label>
-          <select
-            value={filters.sort_order}
-            onChange={e => set('sort_order', e.target.value as 'asc' | 'desc')}
-            className={selectCls}
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-end gap-1.5">
-          <button
-            onClick={handleReset}
-            className="rounded-lg border border-cv-border px-3 py-[3px] text-xs font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
-          >
-            Clear
-          </button>
-          <button
-            onClick={() => handleSearch()}
-            className="rounded-lg border border-transparent bg-primary px-4 py-[3px] text-xs font-semibold text-white transition-colors hover:bg-primary-dark"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-
-      {/* Loading */}
       {isLoading && (
         <div className="flex items-center gap-2 py-12 text-sm text-cv-neutral">
           <IconSpinner className="h-5 w-5 animate-spin text-primary" />
@@ -192,14 +142,12 @@ function CollectionDetail({ id }: { id: string }) {
         </div>
       )}
 
-      {/* Error */}
       {isError && (
         <div className="rounded-xl border border-red-900/50 bg-red-950/40 px-5 py-4 text-sm text-red-400">
           Failed to load cards.
         </div>
       )}
 
-      {/* Results */}
       {!isLoading && !isError && (
         <>
           <p className="text-sm text-cv-neutral">
@@ -220,7 +168,6 @@ function CollectionDetail({ id }: { id: string }) {
                   onClick={() => router.push(`/cards/${card.card_id}`)}
                   className="group flex flex-col overflow-hidden rounded-xl border border-cv-border bg-cv-surface text-left transition hover:border-primary/40 hover:bg-cv-overlay"
                 >
-                  {/* Image */}
                   <div className="px-1 pt-1">
                     {card.image_uri ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -235,14 +182,11 @@ function CollectionDetail({ id }: { id: string }) {
                       </div>
                     )}
                   </div>
-
-                  {/* Info */}
                   <div className="mt-auto flex flex-col gap-1 p-3 pt-2">
                     <div className="flex items-center gap-1">
                       <p className="truncate text-sm font-semibold text-white">{card.card_name}</p>
                       {card.foil && <span className="shrink-0 text-[10px] text-secondary">✦</span>}
                     </div>
-
                     <div className="flex items-center justify-between gap-1">
                       <p className="truncate text-[11px] uppercase tracking-wide text-cv-neutral">
                         {card.set_code} · #{card.collector_number.padStart(4, '0')}
@@ -251,15 +195,13 @@ function CollectionDetail({ id }: { id: string }) {
                         {card.rarity}
                       </p>
                     </div>
-
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-[11px] text-cv-neutral">
                         {CONDITION_SHORT[card.condition] ?? card.condition}
                       </span>
                       <span className="text-[11px] font-medium text-white">×{card.quantity}</span>
                     </div>
-
-                    {(card.price_eur != null) && (
+                    {card.price_eur != null && (
                       <p className="text-[11px] font-medium text-white">
                         €{parseFloat(card.price_eur).toFixed(2)}
                       </p>
@@ -337,11 +279,3 @@ function buildPageList(current: number, total: number): (number | '…')[] {
   pages.push(total);
   return pages;
 }
-
-// ─── Shared styles ────────────────────────────────────────────────────────────
-
-const inputCls =
-  'w-full rounded-lg border border-cv-border bg-cv-surface px-2.5 py-[3px] text-sm text-white placeholder:text-cv-neutral focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30';
-
-const selectCls =
-  'w-full rounded-lg border border-cv-border bg-cv-surface px-2.5 py-[3px] text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30';
