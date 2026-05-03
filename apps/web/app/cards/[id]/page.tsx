@@ -9,7 +9,7 @@ import { formatPrice } from '@cardvault/core';
 import type { Card } from '@cardvault/core';
 import { AppShell } from '@/components/AppShell';
 import { cardsApi } from '@/lib/api-instance';
-import { IconChevronLeft, IconFolder, IconSpinner } from '@/components/icons';
+import { IconFolder, IconSpinner } from '@/components/icons';
 
 // ─── Mana symbol helpers ──────────────────────────────────────────────────────
 
