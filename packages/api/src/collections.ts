@@ -11,6 +11,15 @@ export interface UpdateCollectionBody {
   description?: string;
 }
 
+export interface AddCollectionCardBody {
+  card_id: string;
+  quantity: number;
+  condition: string;
+  language: string;
+  foil?: boolean;
+  notes?: string;
+}
+
 export interface UpdateCollectionCardBody {
   quantity?: number;
   condition?: string;
@@ -24,6 +33,11 @@ export interface ListCollectionCardsParams {
   page_size?: number;
   q?: string;
   set_code?: string;
+  collector_number?: string;
+  card_type?: string;
+  mana_cost?: string;
+  power?: string;
+  toughness?: string;
   sort_by?: 'name' | 'collector_number' | 'rarity' | 'condition' | 'quantity' | 'added_at' | 'price';
   sort_order?: 'asc' | 'desc';
 }
@@ -61,6 +75,9 @@ export function createCollectionsApi(client: ApiClient) {
           ).toString()
         : '';
       return client.get<PaginatedResponse<CollectionCard>>(`/collections/${collectionId}/cards${qs ? `?${qs}` : ''}`);
+    },
+    addCard(collectionId: string, body: AddCollectionCardBody): Promise<CollectionCard> {
+      return client.post<CollectionCard>(`/collections/${collectionId}/cards`, body);
     },
     updateCard(collectionId: string, cardId: string, body: UpdateCollectionCardBody): Promise<CollectionCard> {
       return client.patch<CollectionCard>(`/collections/${collectionId}/cards/${cardId}`, body);

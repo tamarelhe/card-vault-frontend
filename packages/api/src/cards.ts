@@ -32,6 +32,20 @@ export interface CardSearchResponse {
   meta: CardSearchMeta;
 }
 
+export interface PriceHistoryItem {
+  currency: 'eur' | 'usd';
+  price: string | null;
+  price_foil: string | null;
+  price_etched: string | null;
+  source: string;
+  fetched_at: string;
+}
+
+export interface PriceHistory {
+  card_id: string;
+  history: PriceHistoryItem[];
+}
+
 export interface PriceVariation {
   period: string;
   price_now: string | null;
@@ -42,7 +56,7 @@ export interface PriceVariation {
   delta_pct: string | null;
   delta_foil_abs: string | null;
   delta_foil_pct: string | null;
-  direction: 'up' | 'down' | 'flat';
+  direction: 'up' | 'down' | 'stable';
 }
 
 export interface PriceVariationsResponse {
@@ -70,6 +84,9 @@ export function createCardsApi(client: ApiClient) {
     },
     getById(id: string): Promise<Card> {
       return client.get<Card>(`/cards/${id}`);
+    },
+    priceHistory(id: string, lang = 'en'): Promise<PriceHistory> {
+      return client.get<PriceHistory>(`/cards/${id}/price/history?lang=${lang}`);
     },
     priceVariations(id: string, currency = 'eur', lang = 'en'): Promise<PriceVariationsResponse> {
       return client.get<PriceVariationsResponse>(
