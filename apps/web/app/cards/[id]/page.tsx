@@ -1,14 +1,12 @@
 'use client';
 
-import { use, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { use, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { queryKeys } from '@cardvault/api';
 import { formatPrice } from '@cardvault/core';
-import type { Card } from '@cardvault/core';
 import { AppShell } from '@/components/AppShell';
-import { cardsApi } from '@/lib/api-instance';
+import { cardsApi, collectionsApi } from '@/lib/api-instance';
 import { IconFolder, IconSpinner } from '@/components/icons';
 
 // ─── Mana symbol helpers ──────────────────────────────────────────────────────
@@ -31,83 +29,139 @@ function parseSymbols(text: string): React.ReactNode[] {
   });
 }
 
-// ─── Price chart (mock data) ──────────────────────────────────────────────────
+// ─── Price chart ─────────────────────────────────────────────────────────────
 
-type Period = '1d' | '7d' | '30d' | '90d';
+type Period = '7d' | '30d' | '90d';
 type Currency = 'eur' | 'usd';
 
-const PERIOD_POINTS: Record<Period, string[]> = {
-  '1d':  ['6h', '4h', '2h', '1h', 'Now'],
-  '7d':  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
-  '30d': ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Now'],
-  '90d': ['M−3', 'M−2', 'M−1', 'Now'],
-};
+const PERIOD_DAYS: Record<Period, number> = { '7d': 7, '30d': 30, '90d': 90 };
 
-function mockSeries(base: number, labels: string[]) {
-  return labels.map((label, i) => {
-    const t = i / Math.max(labels.length - 1, 1);
-    const wave = Math.sin(i * 1.8) * 0.06;
-    const trend = (t - 0.5) * 0.2;
-    return { label, value: Math.max(0.01, base * (1 + trend + wave)) };
+function opacityColors(n: number, r: number, g: number, b: number): string[] {
+  return Array.from({ length: n }, (_, i) => {
+    const alpha = 0.15 + (i / Math.max(n - 1, 1)) * 0.85;
+    return `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
   });
 }
 
-function PriceChart({ card }: { card: Card }) {
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function fmtPct(pct: string | null | undefined): string | null {
+  if (pct == null) return null;
+  const n = parseFloat(pct);
+  if (isNaN(n)) return null;
+  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+}
+
+function PriceChart({ id }: { id: string }) {
   const [period, setPeriod] = useState<Period>('30d');
   const [currency, setCurrency] = useState<Currency>('eur');
   const [foil, setFoil] = useState(false);
 
-  const basePrice =
-    currency === 'eur'
-      ? (foil ? card.prices?.eur_foil : card.prices?.eur) ?? 0
-      : (foil ? card.prices?.usd_foil : card.prices?.usd) ?? 0;
+  const { data: history, isLoading } = useQuery({
+    queryKey: queryKeys.priceHistory(id),
+    queryFn: () => cardsApi.priceHistory(id),
+  });
 
-  const data = mockSeries(basePrice, PERIOD_POINTS[period]);
+  const { data: variations } = useQuery({
+    queryKey: queryKeys.priceVariations(id, currency),
+    queryFn: () => cardsApi.priceVariations(id, currency),
+    retry: false,
+  });
+
+  const data = useMemo(() => {
+    if (!history) return [];
+    const cutoff = Date.now() - PERIOD_DAYS[period] * 86_400_000;
+    return (history.history ?? [])
+      .filter(e => e.currency === currency && new Date(e.fetched_at).getTime() >= cutoff)
+      .reverse()
+      .map(e => {
+        const raw = foil ? e.price_foil : e.price;
+        const value = raw != null ? parseFloat(raw) : null;
+        return { label: fmtDate(e.fetched_at), value: value != null && !isNaN(value) ? value : null };
+      })
+      .filter(e => e.value != null);
+  }, [history, period, currency, foil]);
+
+  const colors = useMemo(() => {
+    const [r, g, b] = foil ? [16, 185, 129] : [255, 255, 255];
+    return opacityColors(data.length, r, g, b);
+  }, [data.length, foil]);
+
   const sym = currency === 'eur' ? '€' : '$';
+
+  // Prefer pre-computed variation from API; fall back to computing from history data
+  const apiVariation = variations?.variations.find(v => v.period === period);
+  const apiPct = apiVariation ? parseFloat((foil ? apiVariation.delta_foil_pct : apiVariation.delta_pct) ?? '') : NaN;
+
+  const historyDelta = useMemo(() => {
+    if (data.length < 2) return null;
+    const first = data[0].value as number;
+    const last = data[data.length - 1].value as number;
+    if (first === 0) return null;
+    return ((last - first) / first) * 100;
+  }, [data]);
+
+  const pctValue = !isNaN(apiPct) ? apiPct : historyDelta;
+  const deltaPct = pctValue != null ? `${pctValue >= 0 ? '+' : '-'}${pctValue.toFixed(2)}%` : null;
+
+  const direction = pctValue == null ? 'stable'
+    : pctValue > 0.5 ? 'up'
+    : pctValue < -0.5 ? 'down'
+    : 'stable';
+  const deltaColor = direction === 'down' ? 'text-secondary' : direction === 'up' ? 'text-red-400' : 'text-cv-neutral';
 
   return (
     <div className="rounded-xl border border-cv-border bg-cv-raised p-4">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-cv-neutral">
-        Price history
-      </h2>
-
-      {/* Selectors */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        <ToggleGroup
-          options={['1d', '7d', '30d', '90d'] as Period[]}
-          value={period}
-          onChange={setPeriod}
-          format={v => v}
-        />
-        <ToggleGroup
-          options={['eur', 'usd'] as Currency[]}
-          value={currency}
-          onChange={setCurrency}
-          format={v => v.toUpperCase()}
-        />
-        <ToggleGroup
-          options={[false, true]}
-          value={foil}
-          onChange={setFoil}
-          format={v => (v ? 'Foil' : 'Regular')}
-        />
+      {/* Header: title + badge on left, toggles on right */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">
+            Price history
+          </h2>
+          {deltaPct && (
+            <span className={`text-xs font-semibold ${deltaColor}`}>{deltaPct}</span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ToggleGroup
+            options={['7d', '30d', '90d'] as Period[]}
+            value={period}
+            onChange={setPeriod}
+            format={v => v}
+          />
+          <ToggleGroup
+            options={['eur', 'usd'] as Currency[]}
+            value={currency}
+            onChange={setCurrency}
+            format={v => v.toUpperCase()}
+          />
+          <ToggleGroup
+            options={[false, true]}
+            value={foil}
+            onChange={setFoil}
+            format={v => (v ? 'Foil' : 'Regular')}
+          />
+        </div>
       </div>
 
-      {basePrice > 0 ? (
+      <div className="mb-4 border-t border-cv-border/50" />
+
+      {isLoading ? (
+        <div className="flex h-36 items-center justify-center">
+          <IconSpinner className="h-5 w-5 animate-spin text-primary" />
+        </div>
+      ) : data.length > 0 ? (
         <ResponsiveContainer width="100%" height={150}>
-          <BarChart data={data} barCategoryGap="25%">
-            <defs>
-              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9} />
-                <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.25} />
-              </linearGradient>
-            </defs>
+          <BarChart data={data} barCategoryGap="20%">
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2A2A3D" />
             <XAxis
               dataKey="label"
               tick={{ fontSize: 10, fill: '#7A7580' }}
               axisLine={false}
               tickLine={false}
+              interval="preserveStartEnd"
             />
             <YAxis
               tick={{ fontSize: 10, fill: '#7A7580' }}
@@ -117,9 +171,13 @@ function PriceChart({ card }: { card: Card }) {
               width={46}
             />
             <Tooltip
-              formatter={(v) =>
-                typeof v === 'number' ? `${sym}${v.toFixed(2)}` : v
-              }
+              cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              formatter={(v) => [
+                <span key="v" style={{ color: foil ? '#10B981' : '#ffffff' }}>
+                  {typeof v === 'number' ? `${sym}${v.toFixed(2)}` : String(v)}
+                </span>,
+              ]}
+              labelFormatter={label => String(label)}
               contentStyle={{
                 borderRadius: 8,
                 border: '1px solid #2A2A3D',
@@ -128,7 +186,11 @@ function PriceChart({ card }: { card: Card }) {
                 fontSize: 12,
               }}
             />
-            <Bar dataKey="value" fill="url(#barGrad)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+              {data.map((_, i) => (
+                <Cell key={i} fill={colors[i] ?? colors[0]} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       ) : (
@@ -136,6 +198,105 @@ function PriceChart({ card }: { card: Card }) {
           No price data available
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Add to collection ────────────────────────────────────────────────────────
+
+const CONDITIONS = [
+  { value: 'mint', label: 'Mint' },
+  { value: 'near_mint', label: 'Near Mint' },
+  { value: 'lightly_played', label: 'Lightly Played' },
+  { value: 'moderately_played', label: 'Moderately Played' },
+  { value: 'heavily_played', label: 'Heavily Played' },
+  { value: 'damaged', label: 'Damaged' },
+] as const;
+
+const ctrlCls = 'rounded-lg border border-cv-border bg-cv-surface px-2.5 py-1.5 text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30';
+
+function AddToCollection({ cardId }: { cardId: string }) {
+  const queryClient = useQueryClient();
+  const [collectionId, setCollectionId] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [foil, setFoil] = useState(false);
+  const [condition, setCondition] = useState<string>('near_mint');
+  const [added, setAdded] = useState(false);
+
+  const { data: collections } = useQuery({
+    queryKey: queryKeys.collections,
+    queryFn: () => collectionsApi.list({ page: 1, page_size: 100 }),
+  });
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: () => collectionsApi.addCard(collectionId, {
+      card_id: cardId,
+      quantity,
+      foil,
+      condition,
+      language: 'en',
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.collection(collectionId) });
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2500);
+    },
+  });
+
+  if (!collections?.items.length) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-cv-border bg-cv-raised px-3 py-2.5">
+      {/* Collection */}
+      <select
+        value={collectionId}
+        onChange={e => setCollectionId(e.target.value)}
+        className="w-32 rounded-lg border border-cv-border bg-cv-surface px-2 py-1 text-xs text-white focus:border-primary/60 focus:outline-none"
+      >
+        <option value="">Collection…</option>
+        {collections.items.map(col => (
+          <option key={col.id} value={col.id}>{col.name}</option>
+        ))}
+      </select>
+
+      {/* Quantity */}
+      <div className="flex items-center overflow-hidden rounded-lg border border-cv-border bg-cv-surface text-xs">
+        <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-2 py-1 text-cv-neutral hover:text-white">−</button>
+        <span className="min-w-5 text-center font-medium text-white">{quantity}</span>
+        <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-2 py-1 text-cv-neutral hover:text-white">+</button>
+      </div>
+
+      {/* Foil toggle */}
+      <div className="flex rounded-lg border border-cv-border bg-cv-surface p-0.5 text-xs">
+        {[{ v: false, l: 'Reg' }, { v: true, l: 'Foil' }].map(({ v, l }) => (
+          <button
+            key={l} type="button" onClick={() => setFoil(v)}
+            className={['rounded px-2 py-0.5 font-medium transition-colors', foil === v ? 'bg-primary text-white' : 'text-cv-neutral hover:text-white'].join(' ')}
+          >{l}</button>
+        ))}
+      </div>
+
+      {/* Condition */}
+      <select
+        value={condition}
+        onChange={e => setCondition(e.target.value)}
+        className="rounded-lg border border-cv-border bg-cv-surface px-2 py-1 text-xs text-white focus:border-primary/60 focus:outline-none"
+      >
+        {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+      </select>
+
+      {/* Add */}
+      <button
+        onClick={() => mutateAsync()}
+        disabled={!collectionId || isPending}
+        className={[
+          'flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50',
+          added ? 'bg-secondary text-white' : 'bg-primary text-white hover:bg-primary-dark',
+        ].join(' ')}
+      >
+        {isPending && <IconSpinner className="h-3 w-3 animate-spin" />}
+        {added ? 'Added!' : 'Add'}
+      </button>
     </div>
   );
 }
@@ -308,6 +469,9 @@ function CardDetail({ id }: { id: string }) {
             </div>
           )}
 
+          {/* Add to collection */}
+          <AddToCollection cardId={id} />
+
           {/* Collections */}
           <div className="flex flex-col gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">
@@ -336,7 +500,7 @@ function CardDetail({ id }: { id: string }) {
               {card.prices.eur_foil != null && (
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase tracking-wide text-cv-neutral">Foil</span>
-                  <span className="text-xl font-semibold text-primary-light">
+                  <span className="text-xl font-semibold text-secondary">
                     {formatPrice(card.prices.eur_foil, 'EUR')}
                   </span>
                 </div>
@@ -344,7 +508,7 @@ function CardDetail({ id }: { id: string }) {
             </div>
           )}
 
-          <PriceChart card={card} />
+          <PriceChart id={id} />
         </div>
       </div>
     </div>

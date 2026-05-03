@@ -9,6 +9,7 @@ export type { CardSearchParams, CardSearchResponse, CardSearchMeta, PriceVariati
 
 export { createCollectionsApi } from './collections';
 export type {
+  AddCollectionCardBody,
   CreateCollectionBody,
   UpdateCollectionBody,
   UpdateCollectionCardBody,
