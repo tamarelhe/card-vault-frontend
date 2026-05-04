@@ -11,8 +11,8 @@ import { useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi, importsApi } from '@/lib/api-instance';
 import {
-  IconFolder, IconGlobe, IconLock, IconPlus,
-  IconSpinner, IconUpload, IconUsers, IconX,
+  IconFolder, IconGlobe, IconLock, IconLogOut, IconPlus,
+  IconSpinner, IconTrash, IconUpload, IconUsers, IconX,
 } from '@/components/icons';
 import type { Collection } from '@cardvault/core';
 
@@ -26,7 +26,7 @@ const IMPORT_FORMATS = [
 
 type ImportPlatform = 'manabox' | 'moxfield' | 'archidekt';
 
-const IMPORT_TIMEOUT_MS = 30_000;
+const IMPORT_TIMEOUT_MS = 90_000;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -40,10 +40,13 @@ export default function CollectionsPage() {
 
 // ─── Main content ─────────────────────────────────────────────────────────────
 
+type ConfirmAction = { type: 'delete' | 'leave'; id: string; name: string };
+
 function CollectionsContent() {
   const { userEmail } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -51,7 +54,7 @@ function CollectionsContent() {
     queryFn: () => collectionsApi.list({ page: 1, page_size: 100 }),
   });
 
-  const { mutateAsync: createCollection, isPending } = useMutation({
+  const { mutateAsync: createCollection, isPending: isCreating } = useMutation({
     mutationFn: (body: CreateCollectionInput) =>
       collectionsApi.create({
         name: body.name,
@@ -63,6 +66,31 @@ function CollectionsContent() {
       setShowCreate(false);
     },
   });
+
+  const { mutateAsync: deleteCollection, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => collectionsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      setConfirmAction(null);
+    },
+  });
+
+  const { mutateAsync: leaveCollection, isPending: isLeaving } = useMutation({
+    mutationFn: (id: string) => collectionsApi.leaveCollection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      setConfirmAction(null);
+    },
+  });
+
+  const owned = data?.items.filter(c => (c.ownership ?? 'owned') === 'owned') ?? [];
+  const shared = data?.items.filter(c => c.ownership === 'shared') ?? [];
+
+  async function handleConfirm() {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') await deleteCollection(confirmAction.id);
+    else await leaveCollection(confirmAction.id);
+  }
 
   return (
     <div className="flex-1 p-6 lg:p-8">
@@ -112,7 +140,7 @@ function CollectionsContent() {
           {/* ── Mine ── */}
           <section className="flex flex-col gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">Mine</h2>
-            {!data?.items.length ? (
+            {!owned.length ? (
               <EmptyState
                 icon={<IconFolder className="h-8 w-8 text-cv-border" />}
                 title="No collections yet"
@@ -120,8 +148,13 @@ function CollectionsContent() {
               />
             ) : (
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                {data.items.map(col => (
-                  <CollectionItem key={col.id} col={col} owner={userEmail ?? ''} />
+                {owned.map(col => (
+                  <CollectionItem
+                    key={col.id}
+                    col={col}
+                    owner={userEmail ?? ''}
+                    onDelete={() => setConfirmAction({ type: 'delete', id: col.id, name: col.name })}
+                  />
                 ))}
               </div>
             )}
@@ -130,11 +163,24 @@ function CollectionsContent() {
           {/* ── Shared with me ── */}
           <section className="flex flex-col gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">Shared with me</h2>
-            <EmptyState
-              icon={<IconUsers className="h-8 w-8 text-cv-border" />}
-              title="No shared collections"
-              subtitle="Collections shared by other users will appear here."
-            />
+            {!shared.length ? (
+              <EmptyState
+                icon={<IconUsers className="h-8 w-8 text-cv-border" />}
+                title="No shared collections"
+                subtitle="Collections shared by other users will appear here."
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {shared.map(col => (
+                  <CollectionItem
+                    key={col.id}
+                    col={col}
+                    owner=""
+                    onLeave={() => setConfirmAction({ type: 'leave', id: col.id, name: col.name })}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </div>
       )}
@@ -143,51 +189,95 @@ function CollectionsContent() {
         <NewCollectionModal
           onClose={() => setShowCreate(false)}
           onCreate={createCollection}
-          isPending={isPending}
+          isPending={isCreating}
         />
       )}
 
-      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} ownedCollections={owned} />}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.type === 'delete' ? 'Delete collection' : 'Leave collection'}
+          message={
+            confirmAction.type === 'delete'
+              ? `Are you sure you want to delete "${confirmAction.name}"? This action cannot be undone.`
+              : `Are you sure you want to leave "${confirmAction.name}"? You will lose access to it.`
+          }
+          confirmLabel={confirmAction.type === 'delete' ? 'Delete' : 'Leave'}
+          isPending={isDeleting || isLeaving}
+          onConfirm={handleConfirm}
+          onClose={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Collection item ──────────────────────────────────────────────────────────
 
-function CollectionItem({ col, owner }: { col: Collection; owner: string }) {
+function CollectionItem({
+  col,
+  owner,
+  onDelete,
+  onLeave,
+}: {
+  col: Collection;
+  owner: string;
+  onDelete?: () => void;
+  onLeave?: () => void;
+}) {
   const isPublic = col.visibility === 'public';
+  const isShared = col.ownership === 'shared';
+
   return (
-    <Link
-      href={`/collections/${col.id}`}
-      className="group flex flex-col gap-1.5 rounded-xl border border-cv-border bg-cv-raised px-4 py-3 transition hover:border-primary/40 hover:bg-cv-overlay"
-    >
-      {/* Row 1: name | owner */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-medium text-white group-hover:text-primary-light">
+    <div className="group flex flex-col gap-1.5 rounded-xl border border-cv-border bg-cv-raised px-4 py-3 transition hover:border-primary/40 hover:bg-cv-overlay">
+      {/* Row 1: name | badge + owner + action */}
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/collections/${col.id}`}
+          className="min-w-0 flex-1 truncate text-sm font-medium text-white hover:text-primary-light"
+        >
           {col.name}
-        </span>
-        <span className="shrink-0 text-[11px] text-cv-neutral">{owner}</span>
+        </Link>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isShared && (
+            <span className="rounded px-1.5 py-0.5 text-[10px] bg-primary/10 text-primary-light">
+              Shared
+            </span>
+          )}
+          {owner && <span className="text-[11px] text-cv-neutral">{owner}</span>}
+          <button
+            onClick={isShared ? onLeave : onDelete}
+            title={isShared ? 'Leave collection' : 'Delete collection'}
+            className="rounded p-1 text-cv-neutral opacity-0 transition group-hover:opacity-100 hover:bg-cv-overlay hover:text-red-400"
+          >
+            {isShared
+              ? <IconLogOut className="h-3.5 w-3.5" />
+              : <IconTrash className="h-3.5 w-3.5" />
+            }
+          </button>
+        </div>
       </div>
 
-      {/* Row 2: description */}
-      <p className="truncate text-xs text-cv-neutral">
-        {col.description || <span className="italic text-cv-border">No description</span>}
-      </p>
-
-      {/* Row 3: cards · value · visibility */}
-      <div className="flex items-center gap-3 text-[11px] text-cv-neutral">
-        <span>{col.total_cards} cards</span>
-        <span>·</span>
-        <span>€{col.total_value_eur.toFixed(2)}</span>
-        <span>·</span>
-        <span className="flex items-center gap-1">
-          {isPublic
-            ? <><IconGlobe className="h-3 w-3" /> Public</>
-            : <><IconLock className="h-3 w-3" /> Private</>
-          }
-        </span>
-      </div>
-    </Link>
+      {/* Row 2+3: navigate on click */}
+      <Link href={`/collections/${col.id}`} className="flex flex-col gap-1.5">
+        <p className="truncate text-xs text-cv-neutral">
+          {col.description || <span className="italic text-cv-border">No description</span>}
+        </p>
+        <div className="flex items-center gap-3 text-[11px] text-cv-neutral">
+          <span>{col.total_cards} cards</span>
+          <span>·</span>
+          <span>€{col.total_value_eur.toFixed(2)}</span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            {isPublic
+              ? <><IconGlobe className="h-3 w-3" /> Public</>
+              : <><IconLock className="h-3 w-3" /> Private</>
+            }
+          </span>
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -329,11 +419,56 @@ function NewCollectionModal({
   );
 }
 
+// ─── Confirm modal ────────────────────────────────────────────────────────────
+
+function ConfirmModal({
+  title, message, confirmLabel, isPending, onConfirm, onClose,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  isPending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={!isPending ? onClose : undefined}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="mb-2 text-base font-semibold text-white">{title}</h2>
+        <p className="mb-5 text-sm text-cv-neutral">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+          >
+            {isPending && <IconSpinner className="h-4 w-4 animate-spin" />}
+            {confirmLabel}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Import modal ─────────────────────────────────────────────────────────────
 
 type ImportPhase = 'form' | 'uploading' | 'polling' | 'done' | 'failed' | 'timeout';
 
-function ImportModal({ onClose }: { onClose: () => void }) {
+function ImportModal({ onClose, ownedCollections }: { onClose: () => void; ownedCollections: Collection[] }) {
   const queryClient = useQueryClient();
   const [collectionId, setCollectionId] = useState('');
   const [platform, setPlatform] = useState<ImportPlatform>('manabox');
@@ -345,11 +480,6 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const { data: collections } = useQuery({
-    queryKey: queryKeys.collections,
-    queryFn: () => collectionsApi.list({ page: 1, page_size: 100 }),
-  });
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -437,7 +567,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
               </label>
               <select value={collectionId} onChange={e => setCollectionId(e.target.value)} className={inputCls}>
                 <option value="">Select a collection…</option>
-                {collections?.items.map(col => (
+                {ownedCollections.map(col => (
                   <option key={col.id} value={col.id}>{col.name}</option>
                 ))}
               </select>

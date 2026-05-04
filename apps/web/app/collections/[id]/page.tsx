@@ -1,14 +1,18 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
 import type { ListCollectionCardsParams } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
-import { IconChevronLeft, IconChevronRight, IconFolder, IconGlobe, IconLock, IconSpinner } from '@/components/icons';
+import {
+  IconArrowPath, IconCheck, IconChevronLeft, IconChevronRight,
+  IconClipboard, IconFolder, IconGlobe, IconLink, IconLock, IconLogOut, IconSpinner, IconTrash, IconX,
+} from '@/components/icons';
+import type { SharedUser } from '@cardvault/core';
 import {
   CardFilterPanel,
   EMPTY_COLOR_FILTER,
@@ -66,6 +70,8 @@ function CollectionDetail({ id }: { id: string }) {
   const [filters, setFilters] = useState<PanelFilters>(EMPTY_PANEL);
   const [colorFilter, setColorFilter] = useState<ColorFilterState>(EMPTY_COLOR_FILTER);
   const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
+  const [showShare, setShowShare] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
 
   const { data: collection } = useQuery({
     queryKey: queryKeys.collection(id),
@@ -153,6 +159,31 @@ function CollectionDetail({ id }: { id: string }) {
             </div>
           )}
         </div>
+
+        {/* Actions */}
+        {collection && (
+          <div className="flex shrink-0 items-center gap-2">
+            {collection.ownership === 'owned' ? (
+              <button
+                onClick={() => setShowShare(true)}
+                disabled={collection.visibility === 'private'}
+                title={collection.visibility === 'private' ? 'Make the collection public first to share it' : 'Share collection'}
+                className="flex items-center gap-1.5 rounded-lg border border-cv-border px-3 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <IconLink className="h-4 w-4" />
+                Share
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLeave(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-red-900/50 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-950/40"
+              >
+                <IconLogOut className="h-4 w-4" />
+                Leave
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filter panel */}
@@ -251,8 +282,216 @@ function CollectionDetail({ id }: { id: string }) {
           {totalPages > 1 && (
             <Pagination current={currentPage} total={totalPages} onChange={handleSearch} />
           )}
+
+          {collection?.ownership === 'owned' && (
+            <SharedMembersPanel collectionId={id} />
+          )}
         </>
       )}
+
+      {showShare && collection && (
+        <ShareLinkModal collectionId={id} onClose={() => setShowShare(false)} />
+      )}
+
+      {showLeave && collection && (
+        <ConfirmLeaveModal
+          collectionId={id}
+          collectionName={collection.name}
+          onClose={() => setShowLeave(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Share link modal ─────────────────────────────────────────────────────────
+
+function ShareLinkModal({ collectionId, onClose }: { collectionId: string; onClose: () => void }) {
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { mutate: generate, isPending } = useMutation({
+    mutationFn: () => collectionsApi.generateShareLink(collectionId),
+    onSuccess: (data) => setToken(data.token),
+  });
+
+  const shareUrl = token ? `${window.location.origin}/accept-invite/${token}` : null;
+
+  function copyLink() {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 2000);
+  }
+
+  const inputCls =
+    'block w-full rounded-lg border border-cv-border bg-cv-surface px-3 py-2 text-sm text-cv-neutral focus:outline-none';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">Share collection</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-cv-neutral transition-colors hover:bg-cv-overlay hover:text-white"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
+
+        {!token ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-cv-neutral">
+              Generate an invite link that others can use to add this collection to their account.
+            </p>
+            <p className="text-xs text-cv-neutral opacity-70">
+              Generating a link will replace any previously created one.
+            </p>
+            <button
+              onClick={() => generate()}
+              disabled={isPending}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+            >
+              {isPending ? <IconSpinner className="h-4 w-4 animate-spin" /> : <IconLink className="h-4 w-4" />}
+              Get share link
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <input readOnly value={shareUrl ?? ''} className={inputCls} />
+              <button
+                onClick={copyLink}
+                title="Copy link"
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-cv-border px-3 py-2 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary"
+              >
+                {copied ? <IconCheck className="h-4 w-4 text-secondary" /> : <IconClipboard className="h-4 w-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <button
+              onClick={() => { setToken(null); generate(); }}
+              disabled={isPending}
+              className="flex items-center gap-1.5 text-xs text-cv-neutral transition hover:text-white disabled:opacity-50"
+            >
+              <IconArrowPath className="h-3.5 w-3.5" />
+              Regenerate link (invalidates current)
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared members panel ─────────────────────────────────────────────────────
+
+function SharedMembersPanel({ collectionId }: { collectionId: string }) {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.collectionShares(collectionId),
+    queryFn: () => collectionsApi.listSharedUsers(collectionId),
+  });
+
+  const { mutate: revoke, isPending: isRevoking } = useMutation({
+    mutationFn: (userId: string) => collectionsApi.revokeUserAccess(collectionId, userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.collectionShares(collectionId) }),
+  });
+
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  if (isLoading) return null;
+  if (!data?.users.length) return null;
+
+  return (
+    <div className="mt-6 rounded-xl border border-cv-border bg-cv-raised p-4">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-cv-neutral">
+        Shared with ({data.users.length})
+      </h3>
+      <ul className="flex flex-col gap-2">
+        {data.users.map((user: SharedUser) => (
+          <li key={user.user_id} className="flex items-center justify-between gap-3">
+            <span className="truncate text-sm text-white">{user.email}</span>
+            <button
+              onClick={() => { setRevokingId(user.user_id); revoke(user.user_id); }}
+              disabled={isRevoking && revokingId === user.user_id}
+              title="Revoke access"
+              className="shrink-0 rounded p-1 text-cv-neutral transition hover:bg-cv-overlay hover:text-red-400 disabled:opacity-50"
+            >
+              {isRevoking && revokingId === user.user_id
+                ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
+                : <IconTrash className="h-3.5 w-3.5" />
+              }
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Confirm leave modal ──────────────────────────────────────────────────────
+
+function ConfirmLeaveModal({
+  collectionId,
+  collectionName,
+  onClose,
+}: {
+  collectionId: string;
+  collectionName: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const { mutate: leave, isPending } = useMutation({
+    mutationFn: () => collectionsApi.leaveCollection(collectionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      router.replace('/collections');
+    },
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={!isPending ? onClose : undefined}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="mb-2 text-base font-semibold text-white">Leave collection</h2>
+        <p className="mb-5 text-sm text-cv-neutral">
+          Are you sure you want to leave &ldquo;{collectionName}&rdquo;? You will lose access to it.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => leave()}
+            disabled={isPending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+          >
+            {isPending && <IconSpinner className="h-4 w-4 animate-spin" />}
+            Leave
+          </button>
+          <button
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

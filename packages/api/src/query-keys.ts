@@ -9,5 +9,7 @@ export const queryKeys = {
   collections: ['collections'] as const,
   collection: (id: string) => ['collection', id] as const,
   collectionItems: (id: string, params?: Record<string, unknown>) => ['collection', id, 'items', params ?? {}] as const,
+  collectionShares: (id: string) => ['collection', id, 'shares'] as const,
+  sharePreview: (token: string) => ['share-preview', token] as const,
   scanResolve: ['scan', 'resolve'] as const,
 };

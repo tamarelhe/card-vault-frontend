@@ -3,8 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import logoSrc from '../../assets/images/logo.png';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ApiError } from '@cardvault/api';
@@ -13,8 +13,22 @@ import { useAuth } from '@/context/AuthContext';
 import { IconSpinner } from '@/components/icons';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-cv-deep">
+        <IconSpinner className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const { login, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next') ?? undefined;
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -25,13 +39,13 @@ export default function LoginPage() {
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) router.replace('/dashboard');
-  }, [isAuthenticated, isLoading, router]);
+    if (!isLoading && isAuthenticated) router.replace(next ?? '/dashboard');
+  }, [isAuthenticated, isLoading, router, next]);
 
   async function onSubmit(data: LoginInput) {
     setServerError(null);
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, next);
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     }
@@ -46,6 +60,7 @@ export default function LoginPage() {
   }
 
   return (
+
     <div className="flex min-h-screen items-center justify-center bg-cv-deep px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
