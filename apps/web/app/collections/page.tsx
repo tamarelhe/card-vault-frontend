@@ -26,7 +26,7 @@ const IMPORT_FORMATS = [
 
 type ImportPlatform = 'manabox' | 'moxfield' | 'archidekt';
 
-const IMPORT_TIMEOUT_MS = 30_000;
+const IMPORT_TIMEOUT_MS = 90_000;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
