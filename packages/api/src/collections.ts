@@ -1,5 +1,11 @@
 import type { ApiClient } from './client';
-import type { Collection, CollectionCard, PaginatedResponse } from '@cardvault/core';
+import type {
+  Collection,
+  CollectionCard,
+  PaginatedResponse,
+  ShareInvite,
+  SharedUsersResponse,
+} from '@cardvault/core';
 
 export interface CreateCollectionBody {
   name: string;
@@ -92,6 +98,24 @@ export function createCollectionsApi(client: ApiClient) {
     },
     removeCard(collectionId: string, cardId: string): Promise<void> {
       return client.delete<void>(`/collections/${collectionId}/cards/${cardId}`);
+    },
+    generateShareLink(collectionId: string): Promise<ShareInvite> {
+      return client.post<ShareInvite>(`/collections/${collectionId}/share-links`, {});
+    },
+    getSharePreview(token: string): Promise<Collection> {
+      return client.get<Collection>(`/share-links/${token}`);
+    },
+    acceptShareInvite(token: string): Promise<Collection> {
+      return client.post<Collection>(`/share-links/${token}`, {});
+    },
+    listSharedUsers(collectionId: string): Promise<SharedUsersResponse> {
+      return client.get<SharedUsersResponse>(`/collections/${collectionId}/shares`);
+    },
+    revokeUserAccess(collectionId: string, userId: string): Promise<void> {
+      return client.delete<void>(`/collections/${collectionId}/shares/${userId}`);
+    },
+    leaveCollection(collectionId: string): Promise<void> {
+      return client.delete<void>(`/collections/${collectionId}/membership`);
     },
   };
 }

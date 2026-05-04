@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi, setAccessToken, setUnauthorizedHandler } from '@/lib/api-instance';
 import { clearSession, getRefreshToken, getSavedEmail, saveSession } from '@/lib/token-storage';
 
@@ -9,8 +10,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   userEmail: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, redirectTo?: string) => Promise<void>;
+  register: (email: string, password: string, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -31,8 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     setIsAuthenticated(false);
     setUserEmail(null);
+    queryClient.clear();
     router.replace('/login');
-  }, [router]);
+  }, [router, queryClient]);
 
   useEffect(() => {
     scheduleRefreshRef.current = (expiresAt: string) => {
@@ -81,27 +84,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, redirectTo?: string) => {
       const tokens = await authApi.login({ email, password });
       setAccessToken(tokens.access_token);
       saveSession(tokens.refresh_token, email);
       setUserEmail(email);
       setIsAuthenticated(true);
       scheduleRefreshRef.current?.(tokens.expires_at);
-      router.replace('/dashboard');
+      router.replace(redirectTo ?? '/dashboard');
     },
     [router],
   );
 
   const register = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, redirectTo?: string) => {
       const tokens = await authApi.register({ email, password });
       setAccessToken(tokens.access_token);
       saveSession(tokens.refresh_token, email);
       setUserEmail(email);
       setIsAuthenticated(true);
       scheduleRefreshRef.current?.(tokens.expires_at);
-      router.replace('/dashboard');
+      router.replace(redirectTo ?? '/dashboard');
     },
     [router],
   );

@@ -3,11 +3,28 @@ export interface Collection {
   name: string;
   description: string;
   visibility: 'public' | 'private';
+  ownership: 'owned' | 'shared';
   total_cards: number;
   total_value_eur: number;
   total_value_usd: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface ShareInvite {
+  token: string;
+  collection_id: string;
+  created_at: string;
+}
+
+export interface SharedUser {
+  user_id: string;
+  email: string;
+  joined_at: string;
+}
+
+export interface SharedUsersResponse {
+  users: SharedUser[];
 }
 
 export interface PaginationMeta {
