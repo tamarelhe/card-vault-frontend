@@ -71,6 +71,7 @@ function CollectionDetail({ id }: { id: string }) {
   const [colorFilter, setColorFilter] = useState<ColorFilterState>(EMPTY_COLOR_FILTER);
   const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
   const [showShare, setShowShare] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
 
   const { data: collection } = useQuery({
@@ -156,6 +157,12 @@ function CollectionDetail({ id }: { id: string }) {
                   : <><IconLock className="h-3 w-3" /> Private</>
                 }
               </span>
+              {collection.owner_email && (
+                <>
+                  <span>·</span>
+                  <span className="font-normal">{collection.owner_email}</span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -164,15 +171,24 @@ function CollectionDetail({ id }: { id: string }) {
         {collection && (
           <div className="flex shrink-0 items-center gap-2">
             {collection.ownership === 'owned' ? (
-              <button
-                onClick={() => setShowShare(true)}
-                disabled={collection.visibility === 'private'}
-                title={collection.visibility === 'private' ? 'Make the collection public first to share it' : 'Share collection'}
-                className="flex items-center gap-1.5 rounded-lg border border-cv-border px-3 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <IconLink className="h-4 w-4" />
-                Share
-              </button>
+              <>
+                <button
+                  onClick={() => setShowShare(true)}
+                  disabled={collection.visibility === 'private'}
+                  title={collection.visibility === 'private' ? 'Make the collection public first to share it' : 'Share collection'}
+                  className="flex items-center gap-1.5 rounded-lg border border-cv-border px-3 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <IconLink className="h-4 w-4" />
+                  Share
+                </button>
+                <button
+                  onClick={() => setShowDelete(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-900/50 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-950/40"
+                >
+                  <IconTrash className="h-4 w-4" />
+                  Delete
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => setShowLeave(true)}
@@ -291,6 +307,14 @@ function CollectionDetail({ id }: { id: string }) {
 
       {showShare && collection && (
         <ShareLinkModal collectionId={id} onClose={() => setShowShare(false)} />
+      )}
+
+      {showDelete && collection && (
+        <ConfirmDeleteModal
+          collectionId={id}
+          collectionName={collection.name}
+          onClose={() => setShowDelete(false)}
+        />
       )}
 
       {showLeave && collection && (
@@ -435,6 +459,63 @@ function SharedMembersPanel({ collectionId }: { collectionId: string }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ─── Confirm delete modal ─────────────────────────────────────────────────────
+
+function ConfirmDeleteModal({
+  collectionId,
+  collectionName,
+  onClose,
+}: {
+  collectionId: string;
+  collectionName: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const { mutate: deleteCollection, isPending } = useMutation({
+    mutationFn: () => collectionsApi.delete(collectionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      router.replace('/collections');
+    },
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={!isPending ? onClose : undefined}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="mb-2 text-base font-semibold text-white">Delete collection</h2>
+        <p className="mb-5 text-sm text-cv-neutral">
+          Are you sure you want to delete &ldquo;{collectionName}&rdquo;? This will permanently remove the collection and all its cards.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => deleteCollection()}
+            disabled={isPending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+          >
+            {isPending && <IconSpinner className="h-4 w-4 animate-spin" />}
+            Delete
+          </button>
+          <button
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

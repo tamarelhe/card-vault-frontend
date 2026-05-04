@@ -175,7 +175,7 @@ function CollectionsContent() {
                   <CollectionItem
                     key={col.id}
                     col={col}
-                    owner=""
+                    owner={col.owner_email ?? ''}
                     onLeave={() => setConfirmAction({ type: 'leave', id: col.id, name: col.name })}
                   />
                 ))}

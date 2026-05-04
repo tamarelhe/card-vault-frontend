@@ -4,6 +4,7 @@ export interface Collection {
   description: string;
   visibility: 'public' | 'private';
   ownership: 'owned' | 'shared';
+  owner_email?: string;
   total_cards: number;
   total_value_eur: number;
   total_value_usd: number;
