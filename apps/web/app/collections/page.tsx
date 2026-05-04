@@ -12,7 +12,7 @@ import { AppShell } from '@/components/AppShell';
 import { collectionsApi, importsApi } from '@/lib/api-instance';
 import {
   IconFolder, IconGlobe, IconLock, IconLogOut, IconPlus,
-  IconSpinner, IconTrash, IconUpload, IconUsers, IconX,
+  IconSpinner, IconUpload, IconUsers, IconX,
 } from '@/components/icons';
 import type { Collection } from '@cardvault/core';
 
@@ -40,18 +40,19 @@ export default function CollectionsPage() {
 
 // ─── Main content ─────────────────────────────────────────────────────────────
 
-type ConfirmAction = { type: 'delete' | 'leave'; id: string; name: string };
+type ConfirmLeave = { id: string; name: string };
 
 function CollectionsContent() {
   const { userEmail } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState<ConfirmLeave | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.collections,
     queryFn: () => collectionsApi.list({ page: 1, page_size: 100 }),
+    staleTime: 0,
   });
 
   const { mutateAsync: createCollection, isPending: isCreating } = useMutation({
@@ -67,30 +68,16 @@ function CollectionsContent() {
     },
   });
 
-  const { mutateAsync: deleteCollection, isPending: isDeleting } = useMutation({
-    mutationFn: (id: string) => collectionsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.collections });
-      setConfirmAction(null);
-    },
-  });
-
   const { mutateAsync: leaveCollection, isPending: isLeaving } = useMutation({
     mutationFn: (id: string) => collectionsApi.leaveCollection(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections });
-      setConfirmAction(null);
+      setConfirmLeave(null);
     },
   });
 
   const owned = data?.items.filter(c => (c.ownership ?? 'owned') === 'owned') ?? [];
   const shared = data?.items.filter(c => c.ownership === 'shared') ?? [];
-
-  async function handleConfirm() {
-    if (!confirmAction) return;
-    if (confirmAction.type === 'delete') await deleteCollection(confirmAction.id);
-    else await leaveCollection(confirmAction.id);
-  }
 
   return (
     <div className="flex-1 p-6 lg:p-8">
@@ -153,7 +140,6 @@ function CollectionsContent() {
                     key={col.id}
                     col={col}
                     owner={userEmail ?? ''}
-                    onDelete={() => setConfirmAction({ type: 'delete', id: col.id, name: col.name })}
                   />
                 ))}
               </div>
@@ -175,8 +161,8 @@ function CollectionsContent() {
                   <CollectionItem
                     key={col.id}
                     col={col}
-                    owner={col.owner_email ?? ''}
-                    onLeave={() => setConfirmAction({ type: 'leave', id: col.id, name: col.name })}
+                    owner={col.owner?.email ?? ''}
+                    onLeave={() => setConfirmLeave({ id: col.id, name: col.name })}
                   />
                 ))}
               </div>
@@ -195,18 +181,14 @@ function CollectionsContent() {
 
       {showImport && <ImportModal onClose={() => setShowImport(false)} ownedCollections={owned} />}
 
-      {confirmAction && (
+      {confirmLeave && (
         <ConfirmModal
-          title={confirmAction.type === 'delete' ? 'Delete collection' : 'Leave collection'}
-          message={
-            confirmAction.type === 'delete'
-              ? `Are you sure you want to delete "${confirmAction.name}"? This action cannot be undone.`
-              : `Are you sure you want to leave "${confirmAction.name}"? You will lose access to it.`
-          }
-          confirmLabel={confirmAction.type === 'delete' ? 'Delete' : 'Leave'}
-          isPending={isDeleting || isLeaving}
-          onConfirm={handleConfirm}
-          onClose={() => setConfirmAction(null)}
+          title="Leave collection"
+          message={`Are you sure you want to leave "${confirmLeave.name}"? You will lose access to it.`}
+          confirmLabel="Leave"
+          isPending={isLeaving}
+          onConfirm={() => leaveCollection(confirmLeave.id)}
+          onClose={() => setConfirmLeave(null)}
         />
       )}
     </div>
@@ -218,12 +200,10 @@ function CollectionsContent() {
 function CollectionItem({
   col,
   owner,
-  onDelete,
   onLeave,
 }: {
   col: Collection;
   owner: string;
-  onDelete?: () => void;
   onLeave?: () => void;
 }) {
   const isPublic = col.visibility === 'public';
@@ -231,7 +211,7 @@ function CollectionItem({
 
   return (
     <div className="group flex flex-col gap-1.5 rounded-xl border border-cv-border bg-cv-raised px-4 py-3 transition hover:border-primary/40 hover:bg-cv-overlay">
-      {/* Row 1: name | badge + owner + action */}
+      {/* Row 1: name (flex-1) | [badge · owner · leave] (shrink-0, right) */}
       <div className="flex items-center gap-2">
         <Link
           href={`/collections/${col.id}`}
@@ -241,21 +221,22 @@ function CollectionItem({
         </Link>
         <div className="flex shrink-0 items-center gap-1.5">
           {isShared && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] bg-primary/10 text-primary-light">
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary-light">
               Shared
             </span>
           )}
-          {owner && <span className="text-[11px] text-cv-neutral">{owner}</span>}
-          <button
-            onClick={isShared ? onLeave : onDelete}
-            title={isShared ? 'Leave collection' : 'Delete collection'}
-            className="rounded p-1 text-cv-neutral opacity-0 transition group-hover:opacity-100 hover:bg-cv-overlay hover:text-red-400"
-          >
-            {isShared
-              ? <IconLogOut className="h-3.5 w-3.5" />
-              : <IconTrash className="h-3.5 w-3.5" />
-            }
-          </button>
+          {owner && (
+            <span className="text-[11px] text-cv-neutral">{owner}</span>
+          )}
+          {isShared && (
+            <button
+              onClick={onLeave}
+              title="Leave collection"
+              className="rounded p-1 text-cv-neutral opacity-0 transition group-hover:opacity-100 hover:bg-cv-overlay hover:text-red-400"
+            >
+              <IconLogOut className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -682,7 +663,7 @@ function ImportModal({ onClose, ownedCollections }: { onClose: () => void; owned
                   </div>
                 ))}
               </div>
-              {summary.errors.length > 0 && (
+              {(summary.errors?.length ?? 0) > 0 && (
                 <div className="mt-3 border-t border-cv-border/50 pt-3">
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-cv-neutral">
                     Errors ({summary.errors.length})

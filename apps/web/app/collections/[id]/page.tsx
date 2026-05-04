@@ -5,14 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
-import type { ListCollectionCardsParams } from '@cardvault/api';
+import type { ListCollectionCardsParams, UpdateCollectionCardBody } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
 import {
   IconArrowPath, IconCheck, IconChevronLeft, IconChevronRight,
   IconClipboard, IconFolder, IconGlobe, IconLink, IconLock, IconLogOut, IconSpinner, IconTrash, IconX,
 } from '@/components/icons';
-import type { SharedUser } from '@cardvault/core';
+import { CONDITIONS, CONDITION_LIST } from '@cardvault/core';
+import type { CollectionCard, SharedUser } from '@cardvault/core';
 import {
   CardFilterPanel,
   EMPTY_COLOR_FILTER,
@@ -43,14 +44,6 @@ const RARITY_COLORS: Record<string, string> = {
   bonus:    'text-pink-400',
 };
 
-const CONDITION_SHORT: Record<string, string> = {
-  mint:               'M',
-  near_mint:          'NM',
-  lightly_played:     'LP',
-  moderately_played:  'MP',
-  heavily_played:     'HP',
-  damaged:            'D',
-};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -66,7 +59,6 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 function CollectionDetail({ id }: { id: string }) {
-  const router = useRouter();
   const [filters, setFilters] = useState<PanelFilters>(EMPTY_PANEL);
   const [colorFilter, setColorFilter] = useState<ColorFilterState>(EMPTY_COLOR_FILTER);
   const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
@@ -157,10 +149,10 @@ function CollectionDetail({ id }: { id: string }) {
                   : <><IconLock className="h-3 w-3" /> Private</>
                 }
               </span>
-              {collection.owner_email && (
+              {collection.owner?.email && (
                 <>
                   <span>·</span>
-                  <span className="font-normal">{collection.owner_email}</span>
+                  <span className="font-normal">{collection.owner.email}</span>
                 </>
               )}
             </div>
@@ -176,17 +168,18 @@ function CollectionDetail({ id }: { id: string }) {
                   onClick={() => setShowShare(true)}
                   disabled={collection.visibility === 'private'}
                   title={collection.visibility === 'private' ? 'Make the collection public first to share it' : 'Share collection'}
-                  className="flex items-center gap-1.5 rounded-lg border border-cv-border px-3 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-lg border border-cv-border px-2.5 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 sm:px-3"
                 >
                   <IconLink className="h-4 w-4" />
-                  Share
+                  <span className="hidden sm:inline">Share</span>
                 </button>
                 <button
                   onClick={() => setShowDelete(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-red-900/50 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-950/40"
+                  title="Delete collection"
+                  className="flex items-center gap-1.5 rounded-lg border border-red-900/50 px-2.5 py-1.5 text-sm text-red-400 transition hover:bg-red-950/40 sm:px-3"
                 >
                   <IconTrash className="h-4 w-4" />
-                  Delete
+                  <span className="hidden sm:inline">Delete</span>
                 </button>
               </>
             ) : (
@@ -195,7 +188,7 @@ function CollectionDetail({ id }: { id: string }) {
                 className="flex items-center gap-1.5 rounded-lg border border-red-900/50 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-950/40"
               >
                 <IconLogOut className="h-4 w-4" />
-                Leave
+                <span className="hidden sm:inline">Leave</span>
               </button>
             )}
           </div>
@@ -246,51 +239,12 @@ function CollectionDetail({ id }: { id: string }) {
           ) : (
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {cards.items.map(card => (
-                <button
+                <CardTile
                   key={card.id}
-                  onClick={() => router.push(`/cards/${card.card_id}`)}
-                  className="group flex flex-col overflow-hidden rounded-xl border border-cv-border bg-cv-surface text-left transition hover:border-primary/40 hover:bg-cv-overlay"
-                >
-                  <div className="px-1 pt-1">
-                    {card.image_uri ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={card.image_uri}
-                        alt={card.card_name}
-                        className="w-full rounded-[5%] transition group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-cv-deep text-xs text-cv-neutral">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-auto flex flex-col gap-1 p-3 pt-2">
-                    <div className="flex items-center gap-1">
-                      <p className="truncate text-sm font-semibold text-white">{card.card_name}</p>
-                      {card.foil && <span className="shrink-0 text-[10px] text-secondary">✦</span>}
-                    </div>
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="truncate text-[11px] uppercase tracking-wide text-cv-neutral">
-                        {card.set_code} · #{card.collector_number.padStart(4, '0')}
-                      </p>
-                      <p className={['shrink-0 text-[11px] capitalize font-medium', RARITY_COLORS[card.rarity] ?? 'text-cv-neutral'].join(' ')}>
-                        {card.rarity}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] text-cv-neutral">
-                        {CONDITION_SHORT[card.condition] ?? card.condition}
-                      </span>
-                      <span className="text-[11px] font-medium text-white">×{card.quantity}</span>
-                    </div>
-                    {card.price_eur != null && (
-                      <p className="text-[11px] font-medium text-white">
-                        €{parseFloat(card.price_eur).toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                </button>
+                  card={card}
+                  collectionId={id}
+                  canEdit={collection?.ownership === 'owned'}
+                />
               ))}
             </div>
           )}
@@ -324,6 +278,138 @@ function CollectionDetail({ id }: { id: string }) {
           onClose={() => setShowLeave(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Card tile ────────────────────────────────────────────────────────────────
+
+function CardTile({
+  card,
+  collectionId,
+  canEdit,
+}: {
+  card: CollectionCard;
+  collectionId: string;
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: ['collection', collectionId, 'items'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.collection(collectionId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+  }
+
+  const { mutate: updateCard, isPending: isUpdating } = useMutation({
+    mutationFn: (body: UpdateCollectionCardBody) =>
+      collectionsApi.updateCard(collectionId, card.id, body),
+    onSuccess: invalidate,
+  });
+
+  const { mutate: removeCard, isPending: isRemoving } = useMutation({
+    mutationFn: () => collectionsApi.removeCard(collectionId, card.id),
+    onSuccess: invalidate,
+  });
+
+  return (
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-cv-border bg-cv-surface transition hover:border-primary/40 hover:bg-cv-overlay">
+      {/* Image */}
+      <button
+        onClick={() => router.push(`/cards/${card.card_id}`)}
+        className="px-1 pt-1"
+        tabIndex={-1}
+      >
+        {card.image_uri ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={card.image_uri}
+            alt={card.card_name}
+            className="w-full rounded-[5%] transition group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-cv-deep text-xs text-cv-neutral">
+            No image
+          </div>
+        )}
+      </button>
+
+      <div className="flex flex-col gap-1.5 p-3 pt-2">
+        {/* Set · #collector · rarity · foil */}
+        <div className="flex items-center justify-between gap-1">
+          <p className="truncate text-[11px] uppercase tracking-wide text-cv-neutral">
+            {card.set_code} · #{card.collector_number.padStart(4, '0')}
+          </p>
+          <div className="flex shrink-0 items-center gap-1">
+            <p className={['text-[11px] capitalize font-medium', RARITY_COLORS[card.rarity] ?? 'text-cv-neutral'].join(' ')}>
+              {card.rarity}
+            </p>
+            {card.foil && <span className="text-[10px] text-secondary">✦</span>}
+          </div>
+        </div>
+
+        {canEdit ? (
+          <>
+            {/* Row: [condition dropdown] [−] [qty] [+] [|] [delete] */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={card.condition}
+                onChange={e => updateCard({ condition: e.target.value })}
+                disabled={isUpdating}
+                className="min-w-0 flex-1 rounded border border-cv-border bg-cv-surface py-0.5 pl-1 pr-0.5 text-[10px] text-white focus:border-primary/60 focus:outline-none disabled:opacity-60"
+              >
+                {CONDITION_LIST.map(c => (
+                  <option key={c} value={c}>{CONDITIONS[c].label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => updateCard({ quantity: Math.max(1, card.quantity - 1) })}
+                disabled={isUpdating || card.quantity <= 1}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-cv-border text-cv-neutral transition hover:border-white/20 hover:text-white disabled:opacity-30"
+              >
+                <span className="text-sm leading-none">−</span>
+              </button>
+              <span className="min-w-[1rem] shrink-0 text-center text-[11px] font-medium text-white">
+                {card.quantity}
+              </span>
+              <button
+                onClick={() => updateCard({ quantity: card.quantity + 1 })}
+                disabled={isUpdating}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-cv-border text-cv-neutral transition hover:border-white/20 hover:text-white disabled:opacity-30"
+              >
+                <span className="text-sm leading-none">+</span>
+              </button>
+              <span className="h-4 w-px shrink-0 bg-cv-border" />
+              <button
+                onClick={() => removeCard()}
+                disabled={isRemoving}
+                title="Remove from collection"
+                className="shrink-0 rounded p-0.5 text-red-500 transition hover:bg-red-950/30 disabled:opacity-50"
+              >
+                {isRemoving
+                  ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
+                  : <IconTrash className="h-3.5 w-3.5" />
+                }
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] text-cv-neutral">
+              {CONDITIONS[card.condition as keyof typeof CONDITIONS]?.label ?? card.condition}
+            </span>
+            <span className="text-[11px] font-medium text-white">×{card.quantity}</span>
+          </div>
+        )}
+
+        {/* Price */}
+        {card.price_eur != null && (
+          <p className="text-[11px] font-medium text-white">
+            €{parseFloat(card.price_eur).toFixed(2)}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
