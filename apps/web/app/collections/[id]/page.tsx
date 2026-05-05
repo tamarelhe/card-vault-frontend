@@ -138,23 +138,29 @@ function CollectionDetail({ id }: { id: string }) {
             )}
           </div>
           {collection && (
-            <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-cv-neutral">
-              <span>{collection.total_cards} cards</span>
-              <span>·</span>
-              <span>€{collection.total_value_eur.toFixed(2)}</span>
-              <span>·</span>
-              <span className="flex items-center gap-1">
-                {collection.visibility === 'public'
-                  ? <><IconGlobe className="h-3 w-3" /> Public</>
-                  : <><IconLock className="h-3 w-3" /> Private</>
-                }
-              </span>
-              {collection.owner?.email && (
-                <>
-                  <span>·</span>
-                  <span className="font-normal">{collection.owner.email}</span>
-                </>
-              )}
+            <div className="mt-1 flex flex-col gap-0.5 text-xs font-semibold text-cv-neutral sm:flex-row sm:items-center sm:gap-3">
+              {/* Line 1: cards · value */}
+              <div className="flex items-center gap-3">
+                <span>{collection.total_cards} cards</span>
+                <span>·</span>
+                <span>€{collection.total_value_eur.toFixed(2)}</span>
+              </div>
+              <span className="hidden sm:inline">·</span>
+              {/* Line 2: visibility · owner */}
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  {collection.visibility === 'public'
+                    ? <><IconGlobe className="h-3 w-3" /> Public</>
+                    : <><IconLock className="h-3 w-3" /> Private</>
+                  }
+                </span>
+                {collection.owner?.email && (
+                  <>
+                    <span>·</span>
+                    <span className="font-normal">{collection.owner.email}</span>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -350,50 +356,56 @@ function CardTile({
         </div>
 
         {canEdit ? (
-          <>
-            {/* Row: [condition dropdown] [−] [qty] [+] [|] [delete] */}
-            <div className="flex items-center gap-1.5">
-              <select
-                value={card.condition}
-                onChange={e => updateCard({ condition: e.target.value })}
-                disabled={isUpdating}
-                className="min-w-0 flex-1 rounded border border-cv-border bg-cv-surface py-0.5 pl-1 pr-0.5 text-[10px] text-white focus:border-primary/60 focus:outline-none disabled:opacity-60"
-              >
-                {CONDITION_LIST.map(c => (
-                  <option key={c} value={c}>{CONDITIONS[c].label}</option>
-                ))}
-              </select>
+          <div className="flex items-center gap-1.5">
+            {/* Condition — shortLabel in select, full label in options */}
+            <select
+              value={card.condition}
+              onChange={e => updateCard({ condition: e.target.value })}
+              disabled={isUpdating}
+              title={CONDITIONS[card.condition as keyof typeof CONDITIONS]?.label}
+              className="min-w-0 flex-1 rounded border border-cv-border bg-cv-surface py-0.5 pl-1 pr-0.5 text-[10px] text-white focus:border-primary/60 focus:outline-none disabled:opacity-60"
+            >
+              {CONDITION_LIST.map(c => (
+                <option key={c} value={c}>{CONDITIONS[c].shortLabel}</option>
+              ))}
+            </select>
+
+            {/* Quantity stepper */}
+            <div className="flex shrink-0 items-center overflow-hidden rounded border border-cv-border">
               <button
                 onClick={() => updateCard({ quantity: Math.max(1, card.quantity - 1) })}
                 disabled={isUpdating || card.quantity <= 1}
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-cv-border text-cv-neutral transition hover:border-white/20 hover:text-white disabled:opacity-30"
+                className="flex h-5 w-5 items-center justify-center border-r border-cv-border text-cv-neutral transition hover:bg-cv-overlay hover:text-white disabled:opacity-30"
               >
                 <span className="text-sm leading-none">−</span>
               </button>
-              <span className="min-w-[1rem] shrink-0 text-center text-[11px] font-medium text-white">
+              <span className="min-w-[1.5rem] px-0.5 text-center text-[11px] font-medium text-white">
                 {card.quantity}
               </span>
               <button
                 onClick={() => updateCard({ quantity: card.quantity + 1 })}
                 disabled={isUpdating}
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-cv-border text-cv-neutral transition hover:border-white/20 hover:text-white disabled:opacity-30"
+                className="flex h-5 w-5 items-center justify-center border-l border-cv-border text-cv-neutral transition hover:bg-cv-overlay hover:text-white disabled:opacity-30"
               >
                 <span className="text-sm leading-none">+</span>
               </button>
-              <span className="h-4 w-px shrink-0 bg-cv-border" />
-              <button
-                onClick={() => removeCard()}
-                disabled={isRemoving}
-                title="Remove from collection"
-                className="shrink-0 rounded p-0.5 text-red-500 transition hover:bg-red-950/30 disabled:opacity-50"
-              >
-                {isRemoving
-                  ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
-                  : <IconTrash className="h-3.5 w-3.5" />
-                }
-              </button>
             </div>
-          </>
+
+            <span className="h-4 w-px shrink-0 bg-cv-border" />
+
+            {/* Delete */}
+            <button
+              onClick={() => removeCard()}
+              disabled={isRemoving}
+              title="Remove from collection"
+              className="shrink-0 rounded p-0.5 text-red-500 transition hover:bg-red-950/30 disabled:opacity-50"
+            >
+              {isRemoving
+                ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
+                : <IconTrash className="h-3.5 w-3.5" />
+              }
+            </button>
+          </div>
         ) : (
           <div className="flex items-center justify-between gap-1">
             <span className="text-[11px] text-cv-neutral">
