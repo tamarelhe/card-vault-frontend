@@ -10,7 +10,7 @@ import { AppShell } from '@/components/AppShell';
 import { collectionsApi } from '@/lib/api-instance';
 import {
   IconArrowPath, IconCheck, IconChevronLeft, IconChevronRight,
-  IconClipboard, IconFolder, IconGlobe, IconLink, IconLock, IconLogOut, IconSpinner, IconTrash, IconX,
+  IconClipboard, IconExport, IconFolder, IconGlobe, IconLink, IconLock, IconLogOut, IconSpinner, IconTrash, IconX,
 } from '@/components/icons';
 import { CONDITIONS, CONDITION_LIST } from '@cardvault/core';
 import type { CollectionCard, SharedUser } from '@cardvault/core';
@@ -62,6 +62,7 @@ function CollectionDetail({ id }: { id: string }) {
   const [filters, setFilters] = useState<PanelFilters>(EMPTY_PANEL);
   const [colorFilter, setColorFilter] = useState<ColorFilterState>(EMPTY_COLOR_FILTER);
   const [submitted, setSubmitted] = useState<ListCollectionCardsParams>({ sort_by: 'name', sort_order: 'asc', page: 1, page_size: 20 });
+  const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
@@ -171,6 +172,14 @@ function CollectionDetail({ id }: { id: string }) {
             {collection.ownership === 'owned' ? (
               <>
                 <button
+                  onClick={() => setShowExport(true)}
+                  title="Export collection"
+                  className="flex items-center gap-1.5 rounded-lg border border-cv-border px-2.5 py-1.5 text-sm text-cv-neutral transition hover:border-primary/40 hover:text-primary sm:px-3"
+                >
+                  <IconExport className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+                <button
                   onClick={() => setShowShare(true)}
                   disabled={collection.visibility === 'private'}
                   title={collection.visibility === 'private' ? 'Make the collection public first to share it' : 'Share collection'}
@@ -263,6 +272,10 @@ function CollectionDetail({ id }: { id: string }) {
             <SharedMembersPanel collectionId={id} />
           )}
         </>
+      )}
+
+      {showExport && collection && (
+        <ExportModal collectionId={id} onClose={() => setShowExport(false)} />
       )}
 
       {showShare && collection && (
@@ -421,6 +434,113 @@ function CardTile({
             €{parseFloat(card.price_eur).toFixed(2)}
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Export modal ─────────────────────────────────────────────────────────────
+
+const EXPORT_FORMATS: { label: string; value: string; enabled: boolean }[] = [
+  { label: 'Manabox',   value: 'manabox',   enabled: true  },
+  { label: 'Moxfield',  value: 'moxfield',  enabled: false },
+  { label: 'Archidekt', value: 'archidekt', enabled: false },
+];
+
+function ExportModal({ collectionId, onClose }: { collectionId: string; onClose: () => void }) {
+  const [platform, setPlatform] = useState('manabox');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  async function handleExport() {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { blob, filename } = await collectionsApi.exportCsv(collectionId, platform);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Export failed.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={!loading ? onClose : undefined}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">Export collection</h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-lg p-1.5 text-cv-neutral transition-colors hover:bg-cv-overlay hover:text-white disabled:opacity-50"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-5">
+          {/* Platform selector */}
+          <div>
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-cv-neutral">Platform</p>
+            <div className="flex flex-col gap-2">
+              {EXPORT_FORMATS.map(({ label, value, enabled }) => (
+                <label
+                  key={value}
+                  className={[
+                    'flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition',
+                    !enabled && 'cursor-not-allowed opacity-40',
+                    platform === value && enabled
+                      ? 'border-primary/60 bg-primary/10'
+                      : 'border-cv-border hover:border-cv-border/80',
+                  ].filter(Boolean).join(' ')}
+                >
+                  <input
+                    type="radio"
+                    name="export-platform"
+                    value={value}
+                    checked={platform === value}
+                    disabled={!enabled}
+                    onChange={() => setPlatform(value)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm text-white">{label}</span>
+                  {!enabled && (
+                    <span className="ml-auto text-[10px] uppercase tracking-wide text-cv-neutral">Soon</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {errorMsg && (
+            <p className="rounded-lg border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-400">
+              {errorMsg}
+            </p>
+          )}
+
+          <button
+            onClick={handleExport}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+          >
+            {loading
+              ? <><IconSpinner className="h-4 w-4 animate-spin" /> Exporting…</>
+              : <><IconExport className="h-4 w-4" /> Export</>
+            }
+          </button>
+        </div>
       </div>
     </div>
   );

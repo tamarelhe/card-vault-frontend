@@ -84,8 +84,34 @@ export function createApiClient(config: ApiClientConfig) {
     }
   }
 
+  async function requestBlob(path: string): Promise<{ blob: Blob; filename: string }> {
+    const token = config.getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${config.baseUrl}${path}`, { method: 'GET', headers });
+
+    if (!res.ok) {
+      const text = await res.text();
+      const json = text ? (JSON.parse(text) as unknown) : null;
+      const err = json as { code?: string; message?: string } | null;
+      const code = err?.code ?? 'UNKNOWN';
+      const message = err?.message ?? res.statusText;
+      if (res.status === 401) { config.onUnauthorized?.(); throw new UnauthorizedError(message); }
+      if (res.status === 404) throw new NotFoundError(message);
+      throw new ApiError(res.status, code, message);
+    }
+
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] ?? 'export.csv';
+    const blob = await res.blob();
+    return { blob, filename };
+  }
+
   return {
     get: <T>(path: string) => request<T>('GET', path),
+    getBlob: (path: string) => requestBlob(path),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
     postForm: <T>(path: string, body: FormData) => requestForm<T>('POST', path, body),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),

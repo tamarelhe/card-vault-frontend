@@ -117,5 +117,8 @@ export function createCollectionsApi(client: ApiClient) {
     leaveCollection(collectionId: string): Promise<void> {
       return client.delete<void>(`/collections/${collectionId}/membership`);
     },
+    exportCsv(collectionId: string, platform: string): Promise<{ blob: Blob; filename: string }> {
+      return client.getBlob(`/collections/${collectionId}/export?platform=${encodeURIComponent(platform)}`);
+    },
   };
 }
