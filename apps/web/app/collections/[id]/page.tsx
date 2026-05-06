@@ -699,6 +699,7 @@ function ConfirmDeleteModal({
     mutationFn: () => collectionsApi.delete(collectionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topMoversBase });
       router.replace('/collections');
     },
   });
@@ -756,6 +757,7 @@ function ConfirmLeaveModal({
     mutationFn: () => collectionsApi.leaveCollection(collectionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topMoversBase });
       router.replace('/collections');
     },
   });

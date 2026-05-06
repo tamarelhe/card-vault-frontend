@@ -64,6 +64,7 @@ function CollectionsContent() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topMoversBase });
       setShowCreate(false);
     },
   });
@@ -72,6 +73,7 @@ function CollectionsContent() {
     mutationFn: (id: string) => collectionsApi.leaveCollection(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topMoversBase });
       setConfirmLeave(null);
     },
   });

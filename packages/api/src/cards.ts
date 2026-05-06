@@ -67,6 +67,51 @@ export interface PriceVariationsResponse {
   computed_at: string | null;
 }
 
+export interface TopMoverCollection {
+  id: string;
+  name: string;
+  ownership: 'owned' | 'shared';
+  owner_id: string;
+  owner_email: string;
+}
+
+export interface TopMoverWishlist {
+  id: string;
+  name: string;
+}
+
+export interface TopMoverItem {
+  card_id: string;
+  name: string;
+  set_code: string;
+  set_name: string;
+  rarity: string;
+  image_uri: string | null;
+  price_now: string;
+  price_then: string;
+  delta_abs: string;
+  delta_pct: string;
+  direction: 'up' | 'down';
+  collections?: TopMoverCollection[];
+  wishlists?: TopMoverWishlist[];
+}
+
+export interface TopMoversResponse {
+  period: string;
+  currency: string;
+  direction: string;
+  mode: string;
+  movers: TopMoverItem[];
+}
+
+export interface TopMoversParams {
+  period: '1d' | '7d' | '30d' | '90d';
+  currency?: 'eur' | 'usd';
+  direction?: 'up' | 'down' | '';
+  limit?: number;
+  mode?: 'global' | 'collections' | 'wishlists';
+}
+
 export function createCardsApi(client: ApiClient) {
   return {
     search(params: CardSearchParams): Promise<CardSearchResponse> {
@@ -92,6 +137,14 @@ export function createCardsApi(client: ApiClient) {
       return client.get<PriceVariationsResponse>(
         `/cards/${id}/price/variations?currency=${currency}&lang=${lang}`
       );
+    },
+    getTopMovers(params: TopMoversParams): Promise<TopMoversResponse> {
+      const p = new URLSearchParams({ period: params.period });
+      if (params.currency)  p.set('currency',  params.currency);
+      if (params.direction !== undefined && params.direction !== '') p.set('direction', params.direction);
+      if (params.limit)     p.set('limit',     String(params.limit));
+      if (params.mode)      p.set('mode',      params.mode);
+      return client.get<TopMoversResponse>(`/prices/movers?${p.toString()}`);
     },
   };
 }

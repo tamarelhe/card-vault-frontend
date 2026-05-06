@@ -12,4 +12,9 @@ export const queryKeys = {
   collectionShares: (id: string) => ['collection', id, 'shares'] as const,
   sharePreview: (token: string) => ['share-preview', token] as const,
   scanResolve: ['scan', 'resolve'] as const,
+  wishlists: ['wishlists'] as const,
+  wishlist: (id: string) => ['wishlist', id] as const,
+  wishlistItems: (id: string, params?: Record<string, unknown>) => ['wishlist', id, 'items', params ?? {}] as const,
+  topMoversBase: ['prices', 'movers'] as const,
+  topMovers: (params: Record<string, unknown>) => ['prices', 'movers', params] as const,
 };

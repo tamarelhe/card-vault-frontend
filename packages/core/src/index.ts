@@ -1,5 +1,6 @@
 export * from './types/card';
 export * from './types/collection';
+export * from './types/wishlist';
 export * from './types/import';
 export * from './types/scan';
 export * from './types/auth';

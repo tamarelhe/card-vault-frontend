@@ -12,7 +12,7 @@ import {
 import logoSrc from '../../assets/images/logo.png';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Vault', Icon: IconHome },
+  { href: '/dashboard', label: 'Dashboard', Icon: IconHome },
   { href: '/search', label: 'Search', Icon: IconSearch },
   { href: '/collections', label: 'Collections', Icon: IconFolder },
   { href: '/watchlist', label: 'Wishlist', Icon: IconStar },

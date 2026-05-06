@@ -5,7 +5,11 @@ export { createAuthApi } from './auth';
 export type { LoginRequest, RegisterRequest, RefreshRequest, LogoutRequest } from './auth';
 
 export { createCardsApi } from './cards';
-export type { CardSearchParams, CardSearchResponse, CardSearchMeta, PriceVariation, PriceVariationsResponse } from './cards';
+export type {
+  CardSearchParams, CardSearchResponse, CardSearchMeta,
+  PriceVariation, PriceVariationsResponse,
+  TopMoverItem, TopMoverCollection, TopMoverWishlist, TopMoversResponse, TopMoversParams,
+} from './cards';
 
 export { createCollectionsApi } from './collections';
 export type {
@@ -20,5 +24,13 @@ export { createScanApi } from './scan';
 
 export { createImportsApi } from './imports';
 export type { SubmitImportBody } from './imports';
+
+export { createWishlistsApi } from './wishlists';
+export type {
+  CreateWishlistBody,
+  UpdateWishlistBody,
+  AddWishlistItemBody,
+  UpdateWishlistItemBody,
+} from './wishlists';
 
 export { queryKeys } from './query-keys';

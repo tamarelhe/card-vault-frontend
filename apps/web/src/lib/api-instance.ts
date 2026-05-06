@@ -5,6 +5,7 @@ import {
   createCollectionsApi,
   createImportsApi,
   createScanApi,
+  createWishlistsApi,
 } from '@cardvault/api';
 
 let _accessToken: string | null = null;
@@ -29,3 +30,4 @@ export const cardsApi = createCardsApi(apiClient);
 export const collectionsApi = createCollectionsApi(apiClient);
 export const importsApi = createImportsApi(apiClient);
 export const scanApi = createScanApi(apiClient);
+export const wishlistsApi = createWishlistsApi(apiClient);
