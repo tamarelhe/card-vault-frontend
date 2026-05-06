@@ -208,10 +208,10 @@ function MoverRow({
           <img
             src={item.image_uri}
             alt={item.name}
-            className="h-10 w-7 rounded object-cover"
+            className="h-14 w-10 rounded object-cover"
           />
         ) : (
-          <div className="flex h-10 w-7 items-center justify-center rounded bg-cv-deep text-[8px] text-cv-neutral">—</div>
+          <div className="flex h-14 w-10 items-center justify-center rounded bg-cv-deep text-[8px] text-cv-neutral">—</div>
         )}
       </button>
 
@@ -230,6 +230,35 @@ function MoverRow({
             {item.rarity}
           </span>
         </div>
+        {/* Context badges */}
+        {!isUp && !!item.wishlists?.length && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {item.wishlists.map(wl => (
+              <Link
+                key={wl.id}
+                href={`/watchlist/${wl.id}`}
+                onClick={e => e.stopPropagation()}
+                className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary-light hover:bg-primary/20"
+              >
+                {wl.name}
+              </Link>
+            ))}
+          </div>
+        )}
+        {isUp && !!item.collections?.length && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {item.collections.map(col => (
+              <Link
+                key={col.id}
+                href={`/collections/${col.id}`}
+                onClick={e => e.stopPropagation()}
+                className="rounded bg-secondary/10 px-1.5 py-0.5 text-[10px] text-secondary hover:bg-secondary/20"
+              >
+                {col.name}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Price + delta */}
