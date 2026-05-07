@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
 import type { TopMoverItem, TopMoversParams } from '@cardvault/api';
-import { useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/AppShell';
 import { cardsApi } from '@/lib/api-instance';
 import { IconSpinner, IconX } from '@/components/icons';
@@ -41,7 +40,6 @@ export default function DashboardPage() {
 // ─── Main content ─────────────────────────────────────────────────────────────
 
 function DashboardContent() {
-  const { userEmail } = useAuth();
   const [period, setPeriod] = useState<TopMoversParams['period']>('7d');
   const [preview, setPreview] = useState<TopMoverItem | null>(null);
 
@@ -58,15 +56,9 @@ function DashboardContent() {
     queryFn: () => cardsApi.getTopMovers(gainersParams),
   });
 
-  const firstName = userEmail?.split('@')[0] ?? 'there';
 
   return (
     <div className="flex-1 p-6 lg:p-8">
-      {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl font-bold text-white">Welcome back, {firstName}</h1>
-      </div>
-
       {/* ── Market movers ── */}
       <section className="mb-8">
         {/* Header + period selector */}

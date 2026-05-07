@@ -170,7 +170,7 @@ function SearchContent() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-white">Find a card</h1>
+          <h2 className="font-serif text-lg font-bold text-white">Find a card</h2>
         </div>        
       </div>
 

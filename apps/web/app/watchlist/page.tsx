@@ -55,7 +55,7 @@ function WishlistsContent() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-white">Wishlists</h1>
+          <h2 className="font-serif text-lg font-bold text-white">Wishlists</h2>
           <p className="mt-1 text-sm text-cv-neutral">
             {data?.meta.total ?? 0} wishlist{data?.meta.total !== 1 ? 's' : ''}
           </p>

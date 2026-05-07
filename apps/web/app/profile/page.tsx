@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,15 +33,23 @@ function AvatarCircle({
   label: string;
   size?: 'sm' | 'lg';
 }) {
+  const [failed, setFailed] = useState(false);
   const dim = size === 'lg' ? 'h-16 w-16' : 'h-8 w-8';
   const text = size === 'lg' ? 'text-xl' : 'text-sm';
   const initial = (label[0] ?? '?').toUpperCase();
 
-  if (avatarUrl) {
+  useEffect(() => { setFailed(false); }, [avatarUrl]);
+
+  if (avatarUrl && !failed) {
     return (
       <div className={`${dim} shrink-0 overflow-hidden rounded-full border-2 border-cv-border`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={getAvatarUrl(avatarUrl)} alt={label} className="h-full w-full object-cover" />
+        <img
+          src={getAvatarUrl(avatarUrl)}
+          alt={label}
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
       </div>
     );
   }
@@ -335,7 +343,11 @@ function ProfileContent() {
 
   return (
     <div className="flex-1 p-6 lg:p-8">
-      <h1 className="mb-6 font-serif text-2xl font-bold text-white">Profile</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="font-serif text-lg font-bold text-white">Profile</h2>
+        </div> 
+      </div>
 
       <div className="max-w-md space-y-4">
 

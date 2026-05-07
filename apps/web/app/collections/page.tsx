@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,7 @@ import { queryKeys } from '@cardvault/api';
 import { createCollectionSchema, type CreateCollectionInput } from '@cardvault/validation';
 import { useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/AppShell';
-import { collectionsApi, getAvatarUrl, importsApi } from '@/lib/api-instance';
+import { collectionsApi, getAvatarUrl, importsApi, profileApi } from '@/lib/api-instance';
 import {
   IconFolder, IconGlobe, IconLock, IconLogOut, IconPlus,
   IconSpinner, IconUpload, IconUsers, IconX,
@@ -55,6 +55,12 @@ function CollectionsContent() {
     staleTime: 0,
   });
 
+  const { data: profileData } = useQuery({
+    queryKey: queryKeys.profile,
+    queryFn: () => profileApi.getProfile(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { mutateAsync: createCollection, isPending: isCreating } = useMutation({
     mutationFn: (body: CreateCollectionInput) =>
       collectionsApi.create({
@@ -86,7 +92,7 @@ function CollectionsContent() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-white">Collections</h1>
+          <h2 className="font-serif text-lg font-bold text-white">Collections</h2>
           <p className="mt-1 text-sm text-cv-neutral">
             {data?.meta.total ?? 0} collection{data?.meta.total !== 1 ? 's' : ''}
           </p>
@@ -142,6 +148,7 @@ function CollectionsContent() {
                     key={col.id}
                     col={col}
                     ownerLabel={username ? `@${username}` : (userEmail ?? '')}
+                    ownerAvatarUrl={profileData?.avatar_url}
                   />
                 ))}
               </div>
@@ -201,12 +208,22 @@ function CollectionsContent() {
 // ─── Owner avatar (small) ─────────────────────────────────────────────────────
 
 function OwnerAvatar({ label, avatarUrl }: { label: string; avatarUrl?: string | undefined }) {
+  const [failed, setFailed] = useState(false);
   const initial = (label.replace('@', '')[0] ?? '?').toUpperCase();
-  if (avatarUrl) {
+
+  useEffect(() => { setFailed(false); }, [avatarUrl]);
+
+
+  if (avatarUrl && !failed) {
     return (
       <div className="h-5 w-5 shrink-0 overflow-hidden rounded-full border border-cv-border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={getAvatarUrl(avatarUrl)} alt={label} className="h-full w-full object-cover" />
+        <img
+          src={getAvatarUrl(avatarUrl)}
+          alt={label}
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
       </div>
     );
   }
