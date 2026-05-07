@@ -3,15 +3,16 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { authApi, setAccessToken, setUnauthorizedHandler } from '@/lib/api-instance';
-import { clearSession, getRefreshToken, getSavedEmail, saveSession } from '@/lib/token-storage';
+import { authApi, profileApi, setAccessToken, setUnauthorizedHandler } from '@/lib/api-instance';
+import { clearSession, getRefreshToken, getSavedEmail, getSavedUsername, saveSession } from '@/lib/token-storage';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   userEmail: string | null;
+  username: string | null;
   login: (email: string, password: string, redirectTo?: string) => Promise<void>;
-  register: (email: string, password: string, redirectTo?: string) => Promise<void>;
+  register: (email: string, password: string, username: string, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -23,8 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref so the timeout callback always calls the latest version without stale closures
   const scheduleRefreshRef = useRef<((expiresAt: string) => void) | null>(null);
 
   const doLogout = useCallback(() => {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     setIsAuthenticated(false);
     setUserEmail(null);
+    setUsername(null);
     queryClient.clear();
     router.replace('/login');
   }, [router, queryClient]);
@@ -57,11 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [doLogout]);
 
-  // On mount: restore session from stored refresh token
   useEffect(() => {
     setUnauthorizedHandler(doLogout);
     const rt = getRefreshToken();
     const email = getSavedEmail();
+    const savedUsername = getSavedUsername();
 
     if (!rt) {
       setIsLoading(false);
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(tokens.access_token);
         saveSession(tokens.refresh_token, email ?? '');
         setUserEmail(email);
+        setUsername(savedUsername);
         setIsAuthenticated(true);
         scheduleRefreshRef.current?.(tokens.expires_at);
       })
@@ -87,8 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string, redirectTo?: string) => {
       const tokens = await authApi.login({ email, password });
       setAccessToken(tokens.access_token);
-      saveSession(tokens.refresh_token, email);
-      setUserEmail(email);
+      const profile = await profileApi.getProfile();
+      saveSession(tokens.refresh_token, profile.email, profile.username);
+      setUserEmail(profile.email);
+      setUsername(profile.username);
       setIsAuthenticated(true);
       scheduleRefreshRef.current?.(tokens.expires_at);
       router.replace(redirectTo ?? '/dashboard');
@@ -97,11 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, redirectTo?: string) => {
-      const tokens = await authApi.register({ email, password });
+    async (email: string, password: string, usernameValue: string, redirectTo?: string) => {
+      const tokens = await authApi.register({ email, password, username: usernameValue });
       setAccessToken(tokens.access_token);
-      saveSession(tokens.refresh_token, email);
+      saveSession(tokens.refresh_token, email, usernameValue);
       setUserEmail(email);
+      setUsername(usernameValue);
       setIsAuthenticated(true);
       scheduleRefreshRef.current?.(tokens.expires_at);
       router.replace(redirectTo ?? '/dashboard');
@@ -118,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [doLogout]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, userEmail, login, register, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, userEmail, username, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

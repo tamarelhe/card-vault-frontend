@@ -4,6 +4,9 @@ export type { ApiClient } from './client';
 export { createAuthApi } from './auth';
 export type { LoginRequest, RegisterRequest, RefreshRequest, LogoutRequest } from './auth';
 
+export { createProfileApi } from './profile';
+export type { ChangePasswordBody, ChangeAvatarPresetBody, AvatarURLResponse, PresetListResponse } from './profile';
+
 export { createCardsApi } from './cards';
 export type {
   CardSearchParams, CardSearchResponse, CardSearchMeta,

@@ -4,7 +4,7 @@ export interface Collection {
   description: string;
   visibility: 'public' | 'private';
   ownership: 'owned' | 'shared';
-  owner?: { id: string; email: string };
+  owner?: { id: string; email: string; username?: string; avatar_url?: string };
   total_cards: number;
   total_value_eur: number;
   total_value_usd: number;
@@ -21,6 +21,7 @@ export interface ShareInvite {
 export interface SharedUser {
   user_id: string;
   email: string;
+  username: string;
   joined_at: string;
 }
 

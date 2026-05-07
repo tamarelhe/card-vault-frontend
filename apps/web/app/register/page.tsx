@@ -31,10 +31,15 @@ export default function RegisterPage() {
   async function onSubmit(data: RegisterInput) {
     setServerError(null);
     try {
-      await registerUser(data.email, data.password);
+      await registerUser(data.email, data.password, data.username);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setServerError('An account with this email already exists.');
+        const msg = err.message.toLowerCase();
+        if (msg.includes('username')) {
+          setServerError('This username is already taken.');
+        } else {
+          setServerError('An account with this email already exists.');
+        }
       } else {
         setServerError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
       }
@@ -79,6 +84,22 @@ export default function RegisterPage() {
                 className="mt-1.5 block w-full rounded-lg border border-cv-border bg-cv-surface px-3 py-2.5 text-sm text-white placeholder:text-cv-neutral focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
               />
               {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300" htmlFor="username">
+                Username
+              </label>
+              <input
+                {...register('username')}
+                id="username"
+                type="text"
+                autoComplete="username"
+                placeholder="johndoe"
+                disabled={isSubmitting}
+                className="mt-1.5 block w-full rounded-lg border border-cv-border bg-cv-surface px-3 py-2.5 text-sm text-white placeholder:text-cv-neutral focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
+              />
+              {errors.username && <p className="mt-1 text-xs text-red-400">{errors.username.message}</p>}
             </div>
 
             <div>

@@ -2,6 +2,8 @@ import type { CardSearchParams } from './cards';
 
 export const queryKeys = {
   me: ['me'] as const,
+  profile: ['profile'] as const,
+  presetAvatars: ['profile', 'preset-avatars'] as const,
   cards: (params: CardSearchParams) => ['cards', params] as const,
   card: (id: string) => ['card', id] as const,
   priceHistory: (id: string) => ['card', id, 'price', 'history'] as const,

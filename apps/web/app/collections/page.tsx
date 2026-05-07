@@ -9,7 +9,7 @@ import { queryKeys } from '@cardvault/api';
 import { createCollectionSchema, type CreateCollectionInput } from '@cardvault/validation';
 import { useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/AppShell';
-import { collectionsApi, importsApi } from '@/lib/api-instance';
+import { collectionsApi, getAvatarUrl, importsApi } from '@/lib/api-instance';
 import {
   IconFolder, IconGlobe, IconLock, IconLogOut, IconPlus,
   IconSpinner, IconUpload, IconUsers, IconX,
@@ -43,7 +43,7 @@ export default function CollectionsPage() {
 type ConfirmLeave = { id: string; name: string };
 
 function CollectionsContent() {
-  const { userEmail } = useAuth();
+  const { userEmail, username } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState<ConfirmLeave | null>(null);
@@ -141,7 +141,7 @@ function CollectionsContent() {
                   <CollectionItem
                     key={col.id}
                     col={col}
-                    owner={userEmail ?? ''}
+                    ownerLabel={username ? `@${username}` : (userEmail ?? '')}
                   />
                 ))}
               </div>
@@ -163,7 +163,8 @@ function CollectionsContent() {
                   <CollectionItem
                     key={col.id}
                     col={col}
-                    owner={col.owner?.email ?? ''}
+                    ownerLabel={col.owner?.username ? `@${col.owner.username}` : (col.owner?.email ?? '')}
+                    ownerAvatarUrl={col.owner?.avatar_url}
                     onLeave={() => setConfirmLeave({ id: col.id, name: col.name })}
                   />
                 ))}
@@ -197,15 +198,36 @@ function CollectionsContent() {
   );
 }
 
+// ─── Owner avatar (small) ─────────────────────────────────────────────────────
+
+function OwnerAvatar({ label, avatarUrl }: { label: string; avatarUrl?: string | undefined }) {
+  const initial = (label.replace('@', '')[0] ?? '?').toUpperCase();
+  if (avatarUrl) {
+    return (
+      <div className="h-5 w-5 shrink-0 overflow-hidden rounded-full border border-cv-border">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={getAvatarUrl(avatarUrl)} alt={label} className="h-full w-full object-cover" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[9px] font-bold text-primary">
+      {initial}
+    </div>
+  );
+}
+
 // ─── Collection item ──────────────────────────────────────────────────────────
 
 function CollectionItem({
   col,
-  owner,
+  ownerLabel,
+  ownerAvatarUrl,
   onLeave,
 }: {
   col: Collection;
-  owner: string;
+  ownerLabel: string;
+  ownerAvatarUrl?: string | undefined;
   onLeave?: () => void;
 }) {
   const isPublic = col.visibility === 'public';
@@ -213,7 +235,7 @@ function CollectionItem({
 
   return (
     <div className="group flex flex-col gap-1.5 rounded-xl border border-cv-border bg-cv-raised px-4 py-3 transition hover:border-primary/40 hover:bg-cv-overlay">
-      {/* Row 1: name (flex-1) | [badge · owner · leave] (shrink-0, right) */}
+      {/* Row 1: name (flex-1) | [badge · avatar · owner · leave] (shrink-0, right) */}
       <div className="flex items-center gap-2">
         <Link
           href={`/collections/${col.id}`}
@@ -227,8 +249,11 @@ function CollectionItem({
               Shared
             </span>
           )}
-          {owner && (
-            <span className="text-[11px] text-cv-neutral">{owner}</span>
+          {ownerLabel && (
+            <>
+              <OwnerAvatar label={ownerLabel} avatarUrl={ownerAvatarUrl} />
+              <span className="text-[11px] text-cv-neutral">{ownerLabel}</span>
+            </>
           )}
           {isShared && (
             <button

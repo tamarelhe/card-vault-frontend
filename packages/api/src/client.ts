@@ -50,7 +50,7 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 export function createApiClient(config: ApiClientConfig) {
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, opts?: { skipGlobalUnauthorized?: boolean }): Promise<T> {
     const token = config.getToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -64,7 +64,7 @@ export function createApiClient(config: ApiClientConfig) {
     try {
       return await parseResponse<T>(res);
     } catch (err) {
-      if (err instanceof UnauthorizedError) config.onUnauthorized?.();
+      if (err instanceof UnauthorizedError && !opts?.skipGlobalUnauthorized) config.onUnauthorized?.();
       throw err;
     }
   }
@@ -115,7 +115,8 @@ export function createApiClient(config: ApiClientConfig) {
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
     postForm: <T>(path: string, body: FormData) => requestForm<T>('POST', path, body),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
-    patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+    patch: <T>(path: string, body?: unknown, opts?: { skipGlobalUnauthorized?: boolean }) => request<T>('PATCH', path, body, opts),
+    patchForm: <T>(path: string, body: FormData) => requestForm<T>('PATCH', path, body),
     delete: <T>(path: string) => request<T>('DELETE', path),
   };
 }

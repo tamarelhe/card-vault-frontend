@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, userEmail, logout } = useAuth();
+  const { isAuthenticated, isLoading, userEmail, username, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -73,7 +73,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1" />
 
         <div className="border-t border-cv-border p-3">
-          <p className="mb-1.5 truncate px-2 text-[11px] text-cv-neutral">{userEmail}</p>
+          <p className="mb-1.5 truncate px-2 text-[11px] text-cv-neutral">
+            {username ? `@${username}` : (userEmail ?? '')}
+          </p>
           <button
             onClick={() => void logout()}
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-cv-neutral transition-colors hover:bg-cv-raised hover:text-white"
