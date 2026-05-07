@@ -130,14 +130,11 @@ function CollectionDetail({ id }: { id: string }) {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <IconFolder className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-        <div className="flex-1">
-          <div className="flex items-center gap-4">
-            <h1 className="font-serif text-2xl font-bold text-white">{collection?.name ?? '…'}</h1>
-            {collection?.description && (
-              <p className="text-sm text-cv-neutral">{collection.description}</p>
-            )}
-          </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-serif text-lg font-bold text-white">{collection?.name ?? '…'}</h2>
+          {collection?.description && (
+            <p className="mt-0.5 text-sm text-cv-neutral">{collection.description}</p>
+          )}
           {collection && (
             <div className="mt-1 flex flex-col gap-0.5 text-xs font-semibold text-cv-neutral sm:flex-row sm:items-center sm:gap-3">
               {/* Line 1: cards · value */}
@@ -158,7 +155,7 @@ function CollectionDetail({ id }: { id: string }) {
                 {collection.owner?.email && (
                   <>
                     <span>·</span>
-                    <span className="font-normal">{collection.owner.email}</span>
+                    <span className="font-normal">{collection.owner.username}</span>
                   </>
                 )}
               </div>
