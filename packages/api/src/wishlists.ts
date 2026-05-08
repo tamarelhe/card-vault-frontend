@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { PaginatedResponse, Wishlist, WishlistItem, WishlistItemSummary } from '@cardvault/core';
+import type { PaginatedResponse, Wishlist, WishlistItem, WishlistItemSummary, MagicTugaPrice } from '@cardvault/core';
 
 export interface CreateWishlistBody {
   name: string;
@@ -14,7 +14,7 @@ export interface UpdateWishlistBody {
 }
 
 export interface AddWishlistItemBody {
-  card_id: string;
+  oracle_id: string;
   quantity: number;
   condition?: string | null;
   foil?: boolean | null;
@@ -70,6 +70,9 @@ export function createWishlistsApi(client: ApiClient) {
     },
     removeItem(id: string, itemId: string): Promise<void> {
       return client.delete<void>(`/wishlists/${id}/items/${itemId}`);
+    },
+    getMagicTugaStock(): Promise<MagicTugaPrice[]> {
+      return client.get<MagicTugaPrice[]>('/wishlists/magictuga/stock');
     },
   };
 }

@@ -10,7 +10,7 @@ import { createWishlistSchema, type CreateWishlistInput } from '@cardvault/valid
 import { AppShell } from '@/components/AppShell';
 import { wishlistsApi } from '@/lib/api-instance';
 import {
-  IconGlobe, IconLock, IconPlus, IconSpinner, IconStar, IconX,
+  IconGlobe, IconLock, IconPlus, IconSearch, IconSpinner, IconStar, IconX,
 } from '@/components/icons';
 import type { Wishlist } from '@cardvault/core';
 
@@ -60,14 +60,23 @@ function WishlistsContent() {
             {data?.meta.total ?? 0} wishlist{data?.meta.total !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark sm:px-4"
-          aria-label="New wishlist"
-        >
-          <IconPlus className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">New wishlist</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/watchlist/magictuga"
+            className="flex items-center gap-2 rounded-lg border border-cv-border px-3 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white sm:px-4"
+          >
+            <IconSearch className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">MagicTuga Stock</span>
+          </Link>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark sm:px-4"
+            aria-label="New wishlist"
+          >
+            <IconPlus className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">New wishlist</span>
+          </button>
+        </div>
       </div>
 
       {isLoading && (

@@ -19,4 +19,5 @@ export const queryKeys = {
   wishlistItems: (id: string, params?: Record<string, unknown>) => ['wishlist', id, 'items', params ?? {}] as const,
   topMoversBase: ['prices', 'movers'] as const,
   topMovers: (params: Record<string, unknown>) => ['prices', 'movers', params] as const,
+  magicTugaStock: ['wishlists', 'magictuga', 'stock'] as const,
 };

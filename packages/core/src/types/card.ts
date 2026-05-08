@@ -32,6 +32,7 @@ export interface CardPrices {
 
 export interface Card {
   id: string;
+  oracle_id?: string | null;
   scryfall_id?: string | null;
   lang: string;
   name: string;

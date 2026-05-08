@@ -14,16 +14,20 @@ import {
 import { CONDITIONS, CONDITION_LIST } from '@cardvault/core';
 import type { Card, CollectionPresence, WishlistItem } from '@cardvault/core';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Mana symbols ─────────────────────────────────────────────────────────────
 
-const RARITY_COLORS: Record<string, string> = {
-  common:   'text-slate-400',
-  uncommon: 'text-secondary',
-  rare:     'text-yellow-400',
-  mythic:   'text-tertiary-light',
-  special:  'text-primary-light',
-  bonus:    'text-pink-400',
-};
+function ManaSymbol({ code }: { code: string }) {
+  const url = `https://svgs.scryfall.io/card-symbols/${code.replace('/', '').toUpperCase()}.svg`;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={`{${code}}`} className="inline-block h-4 w-4 align-middle" />;
+}
+
+function parseSymbols(text: string): React.ReactNode[] {
+  return text.split(/(\{[^}]+\})/).map((part, i) => {
+    const match = part.match(/^\{([^}]+)\}$/);
+    return match ? <ManaSymbol key={i} code={match[1]!} /> : part;
+  });
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -84,10 +88,9 @@ function WishlistDetail({ id }: { id: string }) {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <IconStar className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <div className="flex-1">
           <div className="flex items-center gap-4">
-            <h1 className="font-serif text-2xl font-bold text-white">{wishlist?.name ?? '…'}</h1>
+            <h2 className="font-serif text-lg font-bold text-white">{wishlist?.name ?? '…'}</h2>
             {wishlist?.description && (
               <p className="text-sm text-cv-neutral">{wishlist.description}</p>
             )}
@@ -200,8 +203,6 @@ function WishlistItemRow({
   wishlistId: string;
   onMutate: () => void;
 }) {
-  const router = useRouter();
-
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: (body: { quantity?: number; condition?: string | null; foil?: boolean | null }) =>
       wishlistsApi.updateItem(wishlistId, item.id, body),
@@ -221,11 +222,7 @@ function WishlistItemRow({
       owned ? 'border-secondary/30' : 'border-cv-border hover:border-primary/30 hover:bg-cv-overlay',
     ].join(' ')}>
       {/* Thumbnail */}
-      <button
-        onClick={() => router.push(`/cards/${item.card_id}`)}
-        className="shrink-0"
-        tabIndex={-1}
-      >
+      <div className="shrink-0">
         {item.image_uri ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -238,24 +235,15 @@ function WishlistItemRow({
             —
           </div>
         )}
-      </button>
+      </div>
 
       {/* Card info */}
       <div className="min-w-0 flex-1">
-        <button
-          onClick={() => router.push(`/cards/${item.card_id}`)}
-          className="block truncate text-left text-sm font-medium text-white hover:text-primary-light"
-        >
-          {item.card_name}
-        </button>
+        <p className="truncate text-sm font-medium text-white">{item.card_name}</p>
         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-cv-neutral">
-          <span className="uppercase">{item.set_code}</span>
-          <span>·</span>
-          <span>#{item.collector_number.padStart(3, '0')}</span>
-          <span>·</span>
-          <span className={['capitalize font-medium', RARITY_COLORS[item.rarity] ?? 'text-cv-neutral'].join(' ')}>
-            {item.rarity}
-          </span>
+          {item.mana_cost && <span className="flex items-center gap-0.5">{parseSymbols(item.mana_cost)}</span>}
+          {item.mana_cost && item.type_line && <span>·</span>}
+          {item.type_line && <span className="truncate">{item.type_line}</span>}
           {item.price_eur && (
             <>
               <span>·</span>
@@ -269,13 +257,12 @@ function WishlistItemRow({
           <div className="mt-1.5 flex flex-wrap gap-1">
             {item.collection_presence.map((p: CollectionPresence) => (
               <Link
-                key={p.collection_id}
-                href={`/collections/${p.collection_id}`}
+                key={p.id}
+                href={`/collections/${p.id}`}
                 className="flex items-center gap-1 rounded bg-secondary/10 px-1.5 py-0.5 text-[10px] text-secondary hover:bg-secondary/20"
               >
                 <IconCheck className="h-2.5 w-2.5" />
-                {p.collection_name}
-                {p.quantity_owned > 1 && <span className="ml-0.5 opacity-70">×{p.quantity_owned}</span>}
+                {p.name}
               </Link>
             ))}
           </div>
@@ -374,19 +361,40 @@ function AddCardModal({
   const [errorMsg, setErrorMsg] = useState('');
 
   const { data: searchResults, isFetching } = useQuery({
-    queryKey: queryKeys.cards({ q: submitted, page: 1, page_size: 12 }),
-    queryFn: () => cardsApi.search({ q: submitted, page: 1, page_size: 12 }),
+    queryKey: queryKeys.cards({ q: submitted, page: 1, page_size: 24 }),
+    queryFn: () => cardsApi.search({ q: submitted, page: 1, page_size: 24 }),
     enabled: submitted.length >= 2,
   });
 
+  // Fetch full card detail once user selects one — the detail endpoint returns oracle_id
+  const { data: fullCard, isFetching: isFetchingCard } = useQuery({
+    queryKey: queryKeys.card(selectedCard?.id ?? ''),
+    queryFn: () => cardsApi.getById(selectedCard!.id),
+    enabled: step === 'configure' && !!selectedCard,
+  });
+
+  // Deduplicate by oracle_id (or name as fallback) to show card concepts, not printings
+  const uniqueCards = (() => {
+    const seen = new Set<string>();
+    return (searchResults?.items ?? []).filter(card => {
+      const key = card.oracle_id ?? card.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+
   const { mutate: addItem, isPending: isAdding } = useMutation({
-    mutationFn: () =>
-      wishlistsApi.addItem(wishlistId, {
-        card_id: selectedCard!.id,
+    mutationFn: () => {
+      const oracle_id = fullCard?.oracle_id ?? selectedCard?.oracle_id;
+      if (!oracle_id) throw new Error('Card oracle ID not available.');
+      return wishlistsApi.addItem(wishlistId, {
+        oracle_id,
         quantity,
         condition: condition || null,
         foil: foil,
-      }),
+      });
+    },
     onSuccess: () => {
       onAdd();
       onClose();
@@ -465,15 +473,15 @@ function AddCardModal({
               </div>
             )}
 
-            {!isFetching && submitted && !searchResults?.items.length && (
+            {!isFetching && submitted && !uniqueCards.length && (
               <p className="py-6 text-center text-sm text-cv-neutral">No cards found.</p>
             )}
 
-            {!isFetching && (searchResults?.items.length ?? 0) > 0 && (
+            {!isFetching && uniqueCards.length > 0 && (
               <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto">
-                {searchResults!.items.map(card => (
+                {uniqueCards.map(card => (
                   <button
-                    key={card.id}
+                    key={card.oracle_id ?? card.id}
                     onClick={() => selectCard(card)}
                     className="group flex flex-col gap-1 rounded-lg border border-cv-border bg-cv-surface p-1.5 text-left transition hover:border-primary/40 hover:bg-cv-overlay"
                   >
@@ -492,9 +500,9 @@ function AddCardModal({
                     <p className="truncate text-[11px] font-medium text-white group-hover:text-primary-light">
                       {card.name}
                     </p>
-                    <p className="truncate text-[10px] uppercase text-cv-neutral">
-                      {card.set_code}
-                    </p>
+                    {card.type_line && (
+                      <p className="truncate text-[10px] text-cv-neutral">{card.type_line}</p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -519,12 +527,14 @@ function AddCardModal({
               )}
               <div>
                 <p className="font-medium text-white">{selectedCard.name}</p>
-                <p className="mt-0.5 text-xs uppercase text-cv-neutral">
-                  {selectedCard.set_name} · #{selectedCard.collector_number}
-                </p>
-                <p className={['mt-0.5 text-xs capitalize font-medium', RARITY_COLORS[selectedCard.rarity] ?? 'text-cv-neutral'].join(' ')}>
-                  {selectedCard.rarity}
-                </p>
+                {selectedCard.mana_cost && (
+                  <p className="mt-0.5 flex items-center gap-0.5 text-xs text-cv-neutral">
+                    {parseSymbols(selectedCard.mana_cost)}
+                  </p>
+                )}
+                {selectedCard.type_line && (
+                  <p className="mt-0.5 text-xs text-cv-neutral">{selectedCard.type_line}</p>
+                )}
               </div>
             </div>
 
@@ -605,10 +615,10 @@ function AddCardModal({
             <div className="flex gap-3">
               <button
                 onClick={() => addItem()}
-                disabled={isAdding}
+                disabled={isAdding || isFetchingCard}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
               >
-                {isAdding && <IconSpinner className="h-4 w-4 animate-spin" />}
+                {(isAdding || isFetchingCard) && <IconSpinner className="h-4 w-4 animate-spin" />}
                 Add to wishlist
               </button>
               <button
