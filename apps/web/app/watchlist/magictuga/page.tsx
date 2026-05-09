@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@cardvault/api';
 import { AppShell } from '@/components/AppShell';
 import { wishlistsApi } from '@/lib/api-instance';
-import { IconChevronLeft, IconSpinner, IconStar } from '@/components/icons';
+import { IconSpinner, IconStar } from '@/components/icons';
 import type { MagicTugaPrice } from '@cardvault/core';
 
 export default function MagicTugaStockPage() {

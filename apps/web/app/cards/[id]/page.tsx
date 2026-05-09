@@ -6,8 +6,8 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { queryKeys } from '@cardvault/api';
 import { formatPrice } from '@cardvault/core';
 import { AppShell } from '@/components/AppShell';
-import { cardsApi, collectionsApi } from '@/lib/api-instance';
-import { IconFolder, IconPlus, IconSpinner, IconX } from '@/components/icons';
+import { cardsApi, collectionsApi, wishlistsApi } from '@/lib/api-instance';
+import { IconFolder, IconPlus, IconSpinner, IconStar, IconX } from '@/components/icons';
 
 // ─── Mana symbol helpers ──────────────────────────────────────────────────────
 
@@ -336,6 +336,144 @@ function AddToCollectionModal({ cardId, onClose }: { cardId: string; onClose: ()
   );
 }
 
+// ─── Add to wishlist modal ────────────────────────────────────────────────────
+
+function AddToWishlistModal({ oracleId, onClose }: { cardId: string; oracleId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [wishlistId, setWishlistId] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [condition, setCondition] = useState('');
+  const [foil, setFoil] = useState<boolean | null>(null);
+  const [added, setAdded] = useState(false);
+
+  const { data: wishlists } = useQuery({
+    queryKey: queryKeys.wishlists,
+    queryFn: () => wishlistsApi.list({ page: 1, page_size: 100 }),
+  });
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: () => wishlistsApi.addItem(wishlistId, {
+      oracle_id: oracleId,
+      quantity,
+      condition: condition || null,
+      foil,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlistItems(wishlistId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlist(wishlistId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlists });
+      setAdded(true);
+      setTimeout(() => { setAdded(false); onClose(); }, 1500);
+    },
+  });
+
+  const inputCls =
+    'block w-full rounded-lg border border-cv-border bg-cv-surface px-3 py-2 text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-cv-border bg-cv-raised p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">Add to wishlist</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-cv-neutral transition-colors hover:bg-cv-overlay hover:text-white"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
+
+        {wishlists && wishlists.items.length === 0 ? (
+          <p className="py-4 text-center text-sm text-cv-neutral">
+            No wishlists yet. Create one from the Wishlists page first.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Row 1: Wishlist + Quantity */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                  Wishlist
+                </label>
+                <select value={wishlistId} onChange={e => setWishlistId(e.target.value)} className={inputCls}>
+                  <option value="">Select a wishlist…</option>
+                  {wishlists?.items.map(wl => (
+                    <option key={wl.id} value={wl.id}>{wl.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="shrink-0">
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                  Qty
+                </label>
+                <div className="flex items-center overflow-hidden rounded-lg border border-cv-border bg-cv-surface text-sm">
+                  <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-2.5 py-2 text-cv-neutral hover:text-white">−</button>
+                  <span className="min-w-6 text-center font-medium text-white">{quantity}</span>
+                  <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-2.5 py-2 text-cv-neutral hover:text-white">+</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Condition + Finish */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                  Preferred condition
+                </label>
+                <select value={condition} onChange={e => setCondition(e.target.value)} className={inputCls}>
+                  <option value="">Any condition</option>
+                  {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="shrink-0">
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-cv-neutral">
+                  Finish
+                </label>
+                <div className="flex rounded-lg border border-cv-border bg-cv-surface p-0.5">
+                  {([{ v: null, l: 'Any' }, { v: true, l: '✦ Foil' }] as { v: boolean | null; l: string }[]).map(({ v, l }) => (
+                    <button
+                      key={l} type="button" onClick={() => setFoil(v)}
+                      className={['rounded px-3 py-1.5 text-xs font-medium transition-colors', foil === v ? 'bg-primary text-white' : 'text-cv-neutral hover:text-white'].join(' ')}
+                    >{l}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => mutateAsync()}
+                disabled={!wishlistId || isPending}
+                className={[
+                  'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60',
+                  added ? 'bg-secondary text-white' : 'bg-primary text-white hover:bg-primary-dark',
+                ].join(' ')}
+              >
+                {isPending && <IconSpinner className="h-4 w-4 animate-spin" />}
+                {added ? 'Added!' : 'Add to wishlist'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-cv-border px-4 py-2 text-sm font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ToggleGroup<T extends string | boolean>({
   options, value, onChange, format,
 }: {
@@ -386,6 +524,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
 function CardDetail({ id }: { id: string }) {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
   const { data: card, isLoading, isError } = useQuery({
     queryKey: queryKeys.card(id),
     queryFn: () => cardsApi.getById(id),
@@ -506,8 +645,28 @@ function CardDetail({ id }: { id: string }) {
             </div>
           </div>
 
+          {/* Wishlists */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-cv-neutral">
+              Wishlists
+            </h2>
+            {card.oracle_id && (
+              <button
+                onClick={() => setShowWishlistModal(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-cv-border px-2.5 py-1 text-xs font-medium text-cv-neutral transition-colors hover:border-white/20 hover:text-white"
+              >
+                <IconStar className="h-3 w-3" />
+                Add to wishlist
+              </button>
+            )}
+          </div>
+
           {showAddModal && (
             <AddToCollectionModal cardId={id} onClose={() => setShowAddModal(false)} />
+          )}
+
+          {showWishlistModal && card.oracle_id && (
+            <AddToWishlistModal cardId={id} oracleId={card.oracle_id} onClose={() => setShowWishlistModal(false)} />
           )}
         </div>
 
