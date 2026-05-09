@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { PaginatedResponse, Wishlist, WishlistItem, WishlistItemSummary, MagicTugaPrice } from '@cardvault/core';
+import type { PaginatedResponse, Wishlist, WishlistItem, WishlistItemSummary, MagicTugaStockResponse } from '@cardvault/core';
 
 export interface CreateWishlistBody {
   name: string;
@@ -71,8 +71,8 @@ export function createWishlistsApi(client: ApiClient) {
     removeItem(id: string, itemId: string): Promise<void> {
       return client.delete<void>(`/wishlists/${id}/items/${itemId}`);
     },
-    getMagicTugaStock(): Promise<MagicTugaPrice[]> {
-      return client.get<MagicTugaPrice[]>('/wishlists/magictuga/stock');
+    getMagicTugaStock(): Promise<MagicTugaStockResponse> {
+      return client.get<MagicTugaStockResponse>('/wishlists/magictuga/stock');
     },
   };
 }

@@ -44,6 +44,11 @@ export interface WishlistItemSummary {
   updated_at: string;
 }
 
+export interface MagicTugaStockResponse {
+  last_synced_at: string | null;
+  items: MagicTugaPrice[];
+}
+
 export interface MagicTugaPrice {
   id: string;
   oracle_id: string;

@@ -8,6 +8,13 @@ import { wishlistsApi } from '@/lib/api-instance';
 import { IconSpinner, IconStar } from '@/components/icons';
 import type { MagicTugaPrice } from '@cardvault/core';
 
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString('pt-PT', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export default function MagicTugaStockPage() {
   return (
     <AppShell>
@@ -22,8 +29,7 @@ function MagicTugaStock() {
     queryFn: () => wishlistsApi.getMagicTugaStock(),
   });
 
-  // Group by card name for compact display
-  const grouped = groupByCard(data ?? []);
+  const grouped = groupByCard(Array.isArray(data?.items) ? data!.items : []);
 
   return (
     <div className="flex flex-col gap-5 p-6">
@@ -41,6 +47,13 @@ function MagicTugaStock() {
           <p className="mt-1 text-sm text-cv-neutral">
             In-stock listings for your wishlist cards at MagicTuga.
           </p>
+          {data && (
+            <p className="mt-0.5 text-xs text-cv-neutral">
+              {data.last_synced_at
+                ? <>Last synced: {fmtDate(data.last_synced_at)}</>
+                : 'Never synced'}
+            </p>
+          )}
         </div>
       </div>
 
